@@ -88,6 +88,7 @@ export function mountAppView() {
   const btnClearPat = document.getElementById('btnClearPat');
   const btnClearAll = document.getElementById('btnClearAll');
   const btnReset = document.getElementById('btnReset');
+  const btnForceUpdate = document.getElementById('btnForceUpdate');
 
   const fileAudioInput = document.getElementById('fileAudioInput');
   const fileProjectInput = document.getElementById('fileProjectInput');
@@ -850,6 +851,25 @@ export function mountAppView() {
     state.drawerOpen = false;
     showLcdMessage('DEMO GROOVES RESTORED');
     renderDrawer();
+  });
+
+  btnForceUpdate.addEventListener('click', async () => {
+    btnForceUpdate.textContent = 'UPDATING...';
+    try {
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+      }
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map(r => r.unregister()));
+      }
+    } catch {
+      // Proceed to reload regardless
+    }
+    const url = new URL(window.location.href);
+    url.searchParams.set('v', String(Date.now()));
+    window.location.replace(url.toString());
   });
 
   // Drag & Drop Audio Files or .sol16.json directly onto SOL-16!

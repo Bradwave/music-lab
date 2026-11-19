@@ -80,8 +80,32 @@ function boot() {
   });
 
   if ('serviceWorker' in navigator) {
+    let reloading = false;
+    const hadController = Boolean(navigator.serviceWorker.controller);
+
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController || reloading) return;
+      if (state.isPlaying) {
+        showLcdMessage('UPDATE READY · RELOAD', 4000);
+        return;
+      }
+      reloading = true;
+      window.location.reload();
+    });
+
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js').catch(() => {});
+      navigator.serviceWorker
+        .register('./sw.js', { updateViaCache: 'none' })
+        .then((reg) => {
+          reg.update().catch(() => {});
+          // Re-check for fresh GitHub Pages builds whenever returning to the mobile PWA
+          document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+              reg.update().catch(() => {});
+            }
+          });
+        })
+        .catch(() => {});
     });
   }
 }

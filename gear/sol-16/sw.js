@@ -1,17 +1,17 @@
-const CACHE_NAME = 'sol16-pwa-v8';
+const CACHE_NAME = 'sol16-pwa-v9';
 
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.webmanifest',
-  './styles/main.css',
+  './styles/main.css?v=9',
   './fonts/silkscreen-400.woff2',
   './fonts/silkscreen-700.woff2',
   './icons/icon.svg',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/apple-touch-icon.png',
-  './src/main.js',
+  './src/main.js?v=9',
   './src/state/scales.js',
   './src/state/presets.js',
   './src/state/store.js',
@@ -50,11 +50,15 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+// Network-first with HTTP revalidation (`cache: 'no-cache'`) so mobile PWAs
+// bypass GitHub Pages' 10-min HTTP cache when online, while staying 100% offline-capable.
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  const reqUrl = new URL(event.request.url);
+  if (reqUrl.origin !== self.location.origin) return;
 
   event.respondWith(
-    fetch(event.request)
+    fetch(event.request, { cache: 'no-cache' })
       .then((response) => {
         if (response && response.status === 200) {
           const clone = response.clone();
@@ -62,6 +66,6 @@ self.addEventListener('fetch', (event) => {
         }
         return response;
       })
-      .catch(() => caches.match(event.request))
+      .catch(() => caches.match(event.request, { ignoreSearch: true }))
   );
 });
