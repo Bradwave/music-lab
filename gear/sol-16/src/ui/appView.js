@@ -6,7 +6,9 @@ import {
   showLcdMessage,
   showLcdKnob,
   resetAllToDemo,
-  clearActiveChannel
+  clearActiveChannel,
+  clearActivePattern,
+  clearAllPatterns
 } from '../state/store.js';
 import {
   CHANNELS,
@@ -25,6 +27,8 @@ import {
   getAudioNodes,
   updateFxAudioParams,
   updateVinylAudio,
+  updateTrackDrive,
+  updateAllTrackDrives,
   recordMicSample,
   importAudioFile
 } from '../audio/engine.js';
@@ -81,6 +85,8 @@ export function mountAppView() {
   const btnWav = document.getElementById('btnWav');
   const btnVinyl = document.getElementById('btnVinyl');
   const btnCopy = document.getElementById('btnCopy');
+  const btnClearPat = document.getElementById('btnClearPat');
+  const btnClearAll = document.getElementById('btnClearAll');
   const btnReset = document.getElementById('btnReset');
 
   const fileAudioInput = document.getElementById('fileAudioInput');
@@ -143,6 +149,24 @@ export function mountAppView() {
     }
   });
 
+  const knobD = createPixelKnob(document.getElementById('knobD'), {
+    label: 'DRIVE',
+    onChange: (val, norm) => {
+      initAudio();
+      if (state.knobBank === 'SOUND') {
+        state.trackParams[state.activeChannel].drive = val;
+        updateTrackDrive(state.activeChannel);
+        const ch = CHANNELS.find(c => c.id === state.activeChannel);
+        showLcdKnob(`${ch.name} DRIVE`, `${Math.round(val * 100)}%`, norm);
+      } else {
+        state.comp = Math.round(val);
+        updateFxAudioParams();
+        showLcdKnob('MASTER COMP', `${state.comp}%`, norm);
+      }
+      saveState();
+    }
+  });
+
   function syncKnobsUI() {
     btnBankSound.classList.toggle('active-orange', state.knobBank === 'SOUND');
     btnBankGroove.classList.toggle('active-orange', state.knobBank === 'GROOVE');
@@ -168,6 +192,12 @@ export function mountAppView() {
         value: p.space, defaultValue: ch.defaultSpace,
         formatValue: v => `${Math.round(v * 100)}%`
       });
+      knobD.configure({
+        label: 'DRIVE',
+        min: 0, max: 1, step: 0.01,
+        value: p.drive ?? ch.defaultDrive, defaultValue: ch.defaultDrive,
+        formatValue: v => `${Math.round(v * 100)}%`
+      });
     } else {
       knobA.configure({
         label: 'BPM',
@@ -187,19 +217,25 @@ export function mountAppView() {
         value: state.pump, defaultValue: 62,
         formatValue: v => `${Math.round(v)}%`
       });
+      knobD.configure({
+        label: 'COMP',
+        min: 0, max: 100, step: 1,
+        value: state.comp ?? 42, defaultValue: 42,
+        formatValue: v => `${Math.round(v)}%`
+      });
     }
   }
 
   btnBankSound.addEventListener('click', () => {
     state.knobBank = 'SOUND';
     syncKnobsUI();
-    showLcdMessage('KNOBS: TONE DECAY SPACE');
+    showLcdMessage('SND: TONE DECAY SPACE DRIVE');
   });
 
   btnBankGroove.addEventListener('click', () => {
     state.knobBank = 'GROOVE';
     syncKnobsUI();
-    showLcdMessage('KNOBS: BPM SWING PUMP');
+    showLcdMessage('MSTR: BPM SWING PUMP COMP');
   });
 
   // -------------------------------------------------------------------------
@@ -768,27 +804,49 @@ export function mountAppView() {
     renderDrawer();
   });
 
-  let resetArmedUntil = 0;
-  btnReset.addEventListener('click', () => {
-    const now = performance.now();
-    if (now > resetArmedUntil) {
-      resetArmedUntil = now + 2400;
-      btnReset.textContent = 'TAP AGAIN TO CONFIRM';
-      btnReset.classList.add('active-orange');
-      setTimeout(() => {
-        if (performance.now() >= resetArmedUntil) {
-          btnReset.textContent = 'RESTORE DEMO GROOVES';
-          btnReset.classList.remove('active-orange');
-        }
-      }, 2450);
-      return;
-    }
-    resetArmedUntil = 0;
-    btnReset.textContent = 'RESTORE DEMO GROOVES';
-    btnReset.classList.remove('active-orange');
+  // Safe 2-tap confirm helper for destructive drawer actions
+  function bindTwoTap(btn, idleText, confirmText, action) {
+    let armedUntil = 0;
+    btn.addEventListener('click', () => {
+      const now = performance.now();
+      if (now > armedUntil) {
+        armedUntil = now + 2400;
+        btn.textContent = confirmText;
+        btn.classList.add('active-orange');
+        setTimeout(() => {
+          if (performance.now() >= armedUntil) {
+            btn.textContent = idleText;
+            btn.classList.remove('active-orange');
+          }
+        }, 2450);
+        return;
+      }
+      armedUntil = 0;
+      btn.textContent = idleText;
+      btn.classList.remove('active-orange');
+      action();
+    });
+  }
+
+  bindTwoTap(btnClearPat, 'CLEAR PATTERN', 'TAP TO CLEAR PAT', () => {
+    clearActivePattern();
+    state.drawerOpen = false;
+    showLcdMessage(`CLEARED PAT ${PATTERN_LETTERS[state.activePattern]}`);
+    renderDrawer();
+  });
+
+  bindTwoTap(btnClearAll, 'CLEAR ALL (A–H)', 'TAP TO WIPE ALL', () => {
+    clearAllPatterns();
+    state.drawerOpen = false;
+    showLcdMessage('ALL PATTERNS CLEARED');
+    renderDrawer();
+  });
+
+  bindTwoTap(btnReset, 'RESTORE DEMO GROOVES', 'TAP TO RESTORE', () => {
     resetAllToDemo();
     updateVinylAudio();
     updateFxAudioParams();
+    updateAllTrackDrives();
     state.drawerOpen = false;
     showLcdMessage('DEMO GROOVES RESTORED');
     renderDrawer();

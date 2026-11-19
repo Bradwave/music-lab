@@ -29,11 +29,12 @@ export const state = {
     sm: 0
   },
   mutes: { bd: false, pr: false, bs: false, ch: false, vx: false, sm: false },
-  knobBank: 'SOUND', // 'SOUND' (Tone, Decay, Space) | 'GROOVE' (BPM, Swing, Pump)
+  knobBank: 'SOUND', // 'SOUND' (Tone, Decay, Space, Drive) | 'GROOVE' (BPM, Swing, Pump, Comp)
   moodId: 'sunset',
   bpm: 123,
   swing: 34,
-  pump: 62, // 0..100 kick sidechain pump + warm analog tape glue
+  pump: 62, // 0..100 kick sidechain pump
+  comp: 42, // 0..100 master bus compression + analog glue drive
   vinylOn: true,
   isPlaying: false,
   isRec: false,
@@ -124,6 +125,7 @@ export function saveState() {
       bpm: state.bpm,
       swing: state.swing,
       pump: state.pump,
+      comp: state.comp,
       moodId: state.moodId,
       vinylOn: state.vinylOn
     };
@@ -147,7 +149,8 @@ export function loadState() {
           state.trackParams[c.id] = {
             tone: Number(parsed.trackParams[c.id].tone ?? c.defaultTone),
             decay: Number(parsed.trackParams[c.id].decay ?? c.defaultDecay),
-            space: Number(parsed.trackParams[c.id].space ?? c.defaultSpace)
+            space: Number(parsed.trackParams[c.id].space ?? c.defaultSpace),
+            drive: Number(parsed.trackParams[c.id].drive ?? c.defaultDrive)
           };
         }
       });
@@ -159,6 +162,7 @@ export function loadState() {
     if (typeof parsed.bpm === 'number') state.bpm = Math.max(110, Math.min(136, parsed.bpm));
     if (typeof parsed.swing === 'number') state.swing = Math.max(0, Math.min(65, parsed.swing));
     if (typeof parsed.pump === 'number') state.pump = Math.max(0, Math.min(100, parsed.pump));
+    if (typeof parsed.comp === 'number') state.comp = Math.max(0, Math.min(100, parsed.comp));
     if (typeof parsed.moodId === 'string') state.moodId = parsed.moodId;
     if (typeof parsed.vinylOn === 'boolean') state.vinylOn = parsed.vinylOn;
   } catch {
@@ -175,6 +179,7 @@ export function resetAllToDemo() {
   state.bpm = 123;
   state.swing = 34;
   state.pump = 62;
+  state.comp = 42;
   state.moodId = 'sunset';
   state.vinylOn = true;
   state.activePattern = 0;
@@ -189,4 +194,19 @@ export function clearActiveChannel() {
   state.patterns[state.activePattern][state.activeChannel] = empty[state.activeChannel];
   saveState();
   notify('grid');
+}
+
+export function clearActivePattern() {
+  state.patterns[state.activePattern] = createEmptyPattern();
+  saveState();
+  notify('pattern');
+}
+
+export function clearAllPatterns() {
+  state.patterns = Array.from({ length: PATTERN_COUNT }, () => createEmptyPattern());
+  state.songChain = [];
+  state.chainEnabled = false;
+  state.chainPos = 0;
+  saveState();
+  notify('reset');
 }

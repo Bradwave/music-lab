@@ -7,9 +7,9 @@ Zero build steps. Zero external audio samples required. 100% Web Audio API + Can
 ## Features
 
 - **8 Patterns (`A`–`H`) + Song Chain**: Ships with 4 starter grooves (*La Perla*, *Break*, *Micro*, *Sunrise*) + 4 sketch slots (`E`–`H`) and an automatic **Song Chain** arranger (`A → A → B → D`) in `≡ Menu`.
-- **3 Tactile Pixel Rotary Knobs** (no fiddly sliders):
-  - **`SND` bank** (per track): **`TONE`** (filter warmth / vocal vowel) · **`DECAY`** (tight microhouse stab → blooming pad) · **`SPACE`** (dotted-8th dub tape delay + warm plate reverb).
-  - **`BPM` bank** (global): **`BPM`** (`110–136`) · **`SWING`** (`0–65%`) · **`PUMP`** (`0–100%` kick sidechain ducking & analog tape glue).
+- **4 Tactile Pixel Rotary Knobs** (no fiddly sliders):
+  - **`SND` bank** (per track): **`TONE`** (filter warmth / vocal vowel) · **`DECAY`** (tight microhouse stab → blooming pad) · **`SPACE`** (dotted-8th dub tape delay + warm plate reverb) · **`DRIVE`** (analog saturation + punchy per-track compression on every track, including Kick & Perc).
+  - **`MSTR` bank** (global): **`BPM`** (`110–136`) · **`SWING`** (`0–65%`) · **`PUMP`** (`0–100%` kick sidechain ducking) · **`COMP`** (`0–100%` master bus glue compression & warm console drive).
 - **6 House & Sample Tracks** (`KICK`, `PERC`, `BASS`, `CHORD`, `VOX`, `SMPL`):
   - **Pick & Paint workflow**: Tap any chord, scale note, drum, or chop to preview it, then paint directly onto the 4×4 Nanoloop step grid. Long-press or right-click active steps for ghost notes; tap the orange LED bar under any track to mute/unmute in one tap.
   - **2 Sample Engines**: Load any audio file (`.mp3`, `.wav`, `.ogg`, `.m4a`, `.webm`) via drag-and-drop or file picker, or record straight from your mic — pitched chromatically across the scale on **`VOX`**, or auto-sliced into **8 playable chops (`S1`–`S8`)** on **`SMPL`**.

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sol16-pwa-v6';
+const CACHE_NAME = 'sol16-pwa-v7';
 
 const APP_SHELL = [
   './',

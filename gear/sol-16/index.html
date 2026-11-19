@@ -45,9 +45,9 @@
       <canvas id="lcdCanvas" width="240" height="80"></canvas>
     </section>
 
-    <!-- TRANSPORT + THREE CHUNKY PIXEL ROTARY KNOBS -->
-    <section class="deck-row">
-      <div class="transport-stack">
+    <!-- TRANSPORT + KNOB BANK BAR -->
+    <section class="transport-bar">
+      <div class="transport-left">
         <button id="btnPlay" class="px-btn play-btn" title="Play / Stop (Space)">
           <span id="ledPlay" class="led"></span>
           <span id="txtPlay">PLAY</span>
@@ -58,15 +58,18 @@
         </button>
       </div>
 
-      <div class="knob-panel">
-        <div id="knobA"></div>
-        <div id="knobB"></div>
-        <div id="knobC"></div>
-        <div class="knob-bank-switch" role="group" aria-label="Knob Function">
-          <button id="btnBankSound" class="px-btn bank-btn" data-bank="SOUND" title="Track Tone, Decay & Space">SND</button>
-          <button id="btnBankGroove" class="px-btn bank-btn" data-bank="GROOVE" title="Global BPM, Swing & Pump">BPM</button>
-        </div>
+      <div class="knob-bank-switch" role="group" aria-label="Knob Function">
+        <button id="btnBankSound" class="px-btn bank-btn" data-bank="SOUND" title="Track Tone, Decay, Space & Drive">SND</button>
+        <button id="btnBankGroove" class="px-btn bank-btn" data-bank="GROOVE" title="Master BPM, Swing, Pump & Comp">MSTR</button>
       </div>
+    </section>
+
+    <!-- FULL-WIDTH 4 PIXEL ROTARY KNOBS -->
+    <section class="knob-panel" aria-label="Rotary Knobs">
+      <div id="knobA"></div>
+      <div id="knobB"></div>
+      <div id="knobC"></div>
+      <div id="knobD"></div>
     </section>
 
     <!-- 6 HOUSE & SAMPLE TRACKS WITH INLINE 1-TAP MUTE BARS -->
@@ -185,11 +188,16 @@
         </div>
       </div>
 
-      <!-- EXTRAS -->
+      <!-- EXTRAS & CLEAR -->
       <div class="drawer-group">
+        <div class="drawer-label">PATTERN &amp; CLEAN SLATE</div>
         <div class="drawer-btn-row">
           <button id="btnVinyl" class="px-btn drawer-btn">VINYL DUST: ON</button>
           <button id="btnCopy" class="px-btn drawer-btn">COPY PATTERN</button>
+        </div>
+        <div class="drawer-btn-row">
+          <button id="btnClearPat" class="px-btn drawer-btn subtle-danger">CLEAR PATTERN</button>
+          <button id="btnClearAll" class="px-btn drawer-btn subtle-danger">CLEAR ALL (A–H)</button>
         </div>
         <button id="btnReset" class="px-btn drawer-btn subtle-danger">RESTORE DEMO GROOVES</button>
       </div>
@@ -213,7 +221,7 @@
         <li>
           <span class="step-badge">2</span>
           <div>
-            <strong>TWIST THE 3 KNOBS</strong> — drag up/down or scroll <strong>TONE</strong>, <strong>DECAY</strong> &amp; <strong>SPACE</strong>. Flip <strong>SND → BPM</strong> for <strong>BPM</strong>, <strong>SWING</strong> &amp; sidechain <strong>PUMP</strong>.
+            <strong>TWIST THE 4 KNOBS</strong> — drag up/down or scroll <strong>TONE</strong>, <strong>DECAY</strong>, <strong>SPACE</strong> &amp; <strong>DRIVE</strong> (saturation + compression). Flip <strong>SND → MSTR</strong> for <strong>BPM</strong>, <strong>SWING</strong>, <strong>PUMP</strong> &amp; master <strong>COMP</strong>.
           </div>
         </li>
         <li>

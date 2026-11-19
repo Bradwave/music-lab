@@ -31,7 +31,8 @@ export function createDefaultTrackParams() {
     params[c.id] = {
       tone: c.defaultTone,
       decay: c.defaultDecay,
-      space: c.defaultSpace
+      space: c.defaultSpace,
+      drive: c.defaultDrive
     };
   });
   return params;

@@ -1,14 +1,15 @@
 import { state } from '../state/store.js';
 import { getMood, midiToFreq, KICK_BRUSHES } from '../state/scales.js';
-import { getAudioNodes, triggerSidechain } from './engine.js';
+import { getAudioNodes, getTrackInput, triggerSidechain } from './engine.js';
 
 function getTapePitchFactor() {
   return state.fx.TAPE ? 0.83 : 1.0;
 }
 
-// 1) WARM ANALOG HOUSE KICK (TONE = warmth/punch, DECAY = length, SPACE = room tail)
+// 1) WARM ANALOG HOUSE KICK (TONE = warmth/punch, DECAY = length, SPACE = room tail, DRIVE = crunch/comp)
 function playKick(time, step, params) {
-  const { audioCtx, drumBus, reverbSend } = getAudioNodes();
+  const { audioCtx, reverbSend } = getAudioNodes();
+  const drumBus = getTrackInput('bd');
   const brush = KICK_BRUSHES[step.note % KICK_BRUSHES.length] || KICK_BRUSHES[0];
   const accentScale = step.accent ? 1.0 : 0.56;
   const { tone, decay: decParam, space } = params;
@@ -70,7 +71,8 @@ function playKick(time, step, params) {
 
 // 2) ORGANIC MICROHOUSE PERCUSSION (6 flavors: HAT, OPEN, SHAK, CLAP, RIM, CONG)
 function playPerc(time, step, params) {
-  const { audioCtx, drumBus, dubSend, reverbSend, noiseBuffer } = getAudioNodes();
+  const { audioCtx, dubSend, reverbSend, noiseBuffer } = getAudioNodes();
+  const drumBus = getTrackInput('pr');
   const typeIdx = step.note % 6;
   const accentScale = step.accent ? 1.0 : 0.58;
   const { tone, decay: decParam, space } = params;
@@ -259,9 +261,10 @@ function playPerc(time, step, params) {
   slap.stop(time + 0.025);
 }
 
-// 3) DEEP WARM SUB / FM HOUSE ORGAN BASS (TONE, DECAY, SPACE)
+// 3) DEEP WARM SUB / FM HOUSE ORGAN BASS (TONE, DECAY, SPACE, DRIVE)
 function playBass(time, step, params) {
-  const { audioCtx, duckBus, dubSend, reverbSend } = getAudioNodes();
+  const { audioCtx, dubSend, reverbSend } = getAudioNodes();
+  const duckBus = getTrackInput('bs');
   const mood = getMood(state.moodId);
   const midi = mood.bassMidi[step.note % mood.bassMidi.length];
   const freq = midiToFreq(midi) * getTapePitchFactor();
@@ -325,9 +328,10 @@ function playBass(time, step, params) {
   sub.stop(time + dur + 0.03);
 }
 
-// 4) LUSH RHODES / JUNO-60 DEEP HOUSE CHORDS (TONE = filter, DECAY = stab..pad, SPACE = dub/reverb)
+// 4) LUSH RHODES / JUNO-60 DEEP HOUSE CHORDS (TONE, DECAY, SPACE, DRIVE)
 function playChord(time, step, params) {
-  const { audioCtx, duckBus, dubSend, reverbSend } = getAudioNodes();
+  const { audioCtx, dubSend, reverbSend } = getAudioNodes();
+  const duckBus = getTrackInput('ch');
   const mood = getMood(state.moodId);
   const voicing = mood.chords[step.note % mood.chords.length];
   const accentScale = step.accent ? 1.0 : 0.62;
@@ -388,7 +392,8 @@ function playChord(time, step, params) {
 
 // 5) DREAMY VOCAL CHOPS (Formant Synth OR Pitched Melodic Audio Sample)
 function playVox(time, step, params) {
-  const { audioCtx, duckBus, dubSend, reverbSend, noiseBuffer } = getAudioNodes();
+  const { audioCtx, dubSend, reverbSend, noiseBuffer } = getAudioNodes();
+  const duckBus = getTrackInput('vx');
   const mood = getMood(state.moodId);
   const midi = mood.voxMidi[step.note % mood.voxMidi.length];
   const accentScale = step.accent ? 1.0 : 0.62;
@@ -516,7 +521,8 @@ function playVox(time, step, params) {
 
 // 6) SMPL TRACK: 8-SLICE AUDIO CHOP SAMPLER OR 8 WARM ORGANIC HOUSE TEXTURES
 function playSmpl(time, step, params) {
-  const { audioCtx, duckBus, dubSend, reverbSend, noiseBuffer } = getAudioNodes();
+  const { audioCtx, dubSend, reverbSend, noiseBuffer } = getAudioNodes();
+  const duckBus = getTrackInput('sm');
   const mood = getMood(state.moodId);
   const idx = step.note % 8;
   const accentScale = step.accent ? 1.0 : 0.6;

@@ -1,12 +1,12 @@
 // Musical scales, chord voicings & track brush definitions tailored for Deep House / Microhouse
 
 export const CHANNELS = [
-  { id: 'bd', name: 'KICK',  defaultTone: 0.58, defaultDecay: 0.48, defaultSpace: 0.12 },
-  { id: 'pr', name: 'PERC',  defaultTone: 0.68, defaultDecay: 0.45, defaultSpace: 0.36 },
-  { id: 'bs', name: 'BASS',  defaultTone: 0.48, defaultDecay: 0.52, defaultSpace: 0.18 },
-  { id: 'ch', name: 'CHORD', defaultTone: 0.56, defaultDecay: 0.60, defaultSpace: 0.58 },
-  { id: 'vx', name: 'VOX',   defaultTone: 0.52, defaultDecay: 0.50, defaultSpace: 0.66 },
-  { id: 'sm', name: 'SMPL',  defaultTone: 0.62, defaultDecay: 0.55, defaultSpace: 0.54 }
+  { id: 'bd', name: 'KICK',  defaultTone: 0.58, defaultDecay: 0.48, defaultSpace: 0.12, defaultDrive: 0.30 },
+  { id: 'pr', name: 'PERC',  defaultTone: 0.68, defaultDecay: 0.45, defaultSpace: 0.36, defaultDrive: 0.25 },
+  { id: 'bs', name: 'BASS',  defaultTone: 0.48, defaultDecay: 0.52, defaultSpace: 0.18, defaultDrive: 0.24 },
+  { id: 'ch', name: 'CHORD', defaultTone: 0.56, defaultDecay: 0.60, defaultSpace: 0.58, defaultDrive: 0.18 },
+  { id: 'vx', name: 'VOX',   defaultTone: 0.52, defaultDecay: 0.50, defaultSpace: 0.66, defaultDrive: 0.16 },
+  { id: 'sm', name: 'SMPL',  defaultTone: 0.62, defaultDecay: 0.55, defaultSpace: 0.54, defaultDrive: 0.22 }
 ];
 
 // Kick styles (4 tactile brushes)

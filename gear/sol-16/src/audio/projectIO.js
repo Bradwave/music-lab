@@ -4,7 +4,7 @@
 import { state, normalizePatterns, saveState, showLcdMessage, notify } from '../state/store.js';
 import { CHANNELS } from '../state/scales.js';
 import { PATTERN_COUNT } from '../state/presets.js';
-import { initAudio, updateFxAudioParams, updateVinylAudio } from './engine.js';
+import { initAudio, updateFxAudioParams, updateVinylAudio, updateAllTrackDrives } from './engine.js';
 
 // Downsample AudioBuffer to compact 22050Hz 16-bit mono PCM base64 so project JSON stays nimble
 function serializeAudioBuffer(buf) {
@@ -58,6 +58,7 @@ export function exportProjectJson() {
     bpm: state.bpm,
     swing: state.swing,
     pump: state.pump,
+    comp: state.comp,
     moodId: state.moodId,
     vinylOn: state.vinylOn,
     songChain: state.songChain,
@@ -103,7 +104,8 @@ export async function importProjectJson(file) {
           state.trackParams[c.id] = {
             tone: Number(parsed.trackParams[c.id].tone ?? c.defaultTone),
             decay: Number(parsed.trackParams[c.id].decay ?? c.defaultDecay),
-            space: Number(parsed.trackParams[c.id].space ?? c.defaultSpace)
+            space: Number(parsed.trackParams[c.id].space ?? c.defaultSpace),
+            drive: Number(parsed.trackParams[c.id].drive ?? c.defaultDrive)
           };
         }
       });
@@ -112,6 +114,7 @@ export async function importProjectJson(file) {
     if (typeof parsed.bpm === 'number') state.bpm = Math.max(110, Math.min(136, parsed.bpm));
     if (typeof parsed.swing === 'number') state.swing = Math.max(0, Math.min(65, parsed.swing));
     if (typeof parsed.pump === 'number') state.pump = Math.max(0, Math.min(100, parsed.pump));
+    if (typeof parsed.comp === 'number') state.comp = Math.max(0, Math.min(100, parsed.comp));
     if (typeof parsed.moodId === 'string') state.moodId = parsed.moodId;
     if (typeof parsed.vinylOn === 'boolean') state.vinylOn = parsed.vinylOn;
     if (Array.isArray(parsed.songChain) && parsed.songChain.length > 0) {
@@ -134,6 +137,7 @@ export async function importProjectJson(file) {
     saveState();
     updateVinylAudio();
     updateFxAudioParams();
+    updateAllTrackDrives();
     showLcdMessage('PROJECT LOADED!');
     notify('reset');
     return true;

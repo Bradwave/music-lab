@@ -1,4 +1,5 @@
 import { state, showLcdMessage, notify } from '../state/store.js';
+import { CHANNELS } from '../state/scales.js';
 
 let audioCtx = null;
 let masterGain = null;
@@ -9,6 +10,7 @@ let analyser = null;
 let drumBus = null;
 let duckBus = null;
 let sidechainGain = null;
+const trackStrips = {};
 
 // Sends
 let dubSend = null;
@@ -157,11 +159,37 @@ export function initAudio() {
   duckBus.connect(sidechainGain);
   sidechainGain.connect(masterFilter);
 
+  // Per-track analog saturation + punchy compressor strips (including KICK & PERC!)
+  CHANNELS.forEach(ch => {
+    const input = audioCtx.createGain();
+    const preGain = audioCtx.createGain();
+    const shaper = audioCtx.createWaveShaper();
+    shaper.curve = makeSoftClipCurve(12);
+    shaper.oversample = '2x';
+
+    const comp = audioCtx.createDynamicsCompressor();
+    comp.knee.value = 10;
+    comp.attack.value = ch.id === 'bd' || ch.id === 'pr' ? 0.004 : 0.008;
+    comp.release.value = ch.id === 'bd' || ch.id === 'pr' ? 0.085 : 0.14;
+
+    const makeup = audioCtx.createGain();
+
+    input.connect(preGain);
+    preGain.connect(shaper);
+    shaper.connect(comp);
+    comp.connect(makeup);
+    makeup.connect(ch.id === 'bd' || ch.id === 'pr' ? drumBus : duckBus);
+
+    trackStrips[ch.id] = { input, preGain, shaper, comp, makeup };
+    updateTrackDrive(ch.id);
+  });
+
   masterFilter.connect(tapeSat);
   tapeSat.connect(masterComp);
   masterComp.connect(masterGain);
   masterGain.connect(analyser);
   analyser.connect(audioCtx.destination);
+  updateFxAudioParams();
 
   // Warm Vinyl Dust Loop
   vinylGain = audioCtx.createGain();
@@ -174,6 +202,32 @@ export function initAudio() {
   vinylSource.start();
 
   return audioCtx;
+}
+
+export function getTrackInput(chId) {
+  return trackStrips[chId]?.input || (chId === 'bd' || chId === 'pr' ? drumBus : duckBus);
+}
+
+export function updateTrackDrive(chId) {
+  if (!audioCtx || !trackStrips[chId]) return;
+  const now = audioCtx.currentTime;
+  const d = Math.max(0, Math.min(1, state.trackParams[chId]?.drive ?? 0.2));
+  const strip = trackStrips[chId];
+
+  // Warm analog saturation drive + tight per-track compression squash
+  const pre = 0.95 + d * 3.1;
+  const threshold = -6 - d * 24;   // -6dB (open) -> -30dB (heavily squashed!)
+  const ratio = 1.5 + d * 8.5;     // 1.5:1 -> 10:1
+  const makeup = 1.0 + d * 0.45 - Math.max(0, d - 0.5) * 0.35; // balanced loudness
+
+  strip.preGain.gain.setTargetAtTime(pre, now, 0.025);
+  strip.comp.threshold.setTargetAtTime(threshold, now, 0.025);
+  strip.comp.ratio.setTargetAtTime(ratio, now, 0.025);
+  strip.makeup.gain.setTargetAtTime(makeup, now, 0.025);
+}
+
+export function updateAllTrackDrives() {
+  CHANNELS.forEach(ch => updateTrackDrive(ch.id));
 }
 
 export function getAudioNodes() {
@@ -215,8 +269,15 @@ export function updateFxAudioParams() {
     masterFilter.Q.setTargetAtTime(0.75, now, 0.04);
   }
 
-  const baseDrive = 3 + (state.pump / 100) * 9;
-  tapeSat.curve = makeSoftClipCurve(state.fx.TAPE ? 28 : baseDrive);
+  const compNorm = Math.max(0, Math.min(1, (state.comp ?? 42) / 100));
+  const baseDrive = 2 + compNorm * 22;
+  tapeSat.curve = makeSoftClipCurve(state.fx.TAPE ? 30 : baseDrive);
+
+  // Master bus glue compressor (compresses EVERYTHING including Kick & Perc!)
+  masterComp.threshold.setTargetAtTime(-8 - compNorm * 24, now, 0.03);
+  masterComp.ratio.setTargetAtTime(1.8 + compNorm * 8.5, now, 0.03);
+  masterComp.release.setTargetAtTime(0.18 - compNorm * 0.08, now, 0.03);
+  masterGain.gain.setTargetAtTime(0.84 + compNorm * 0.44, now, 0.03);
 }
 
 export function triggerSidechain(time, intensity = 0.85) {
