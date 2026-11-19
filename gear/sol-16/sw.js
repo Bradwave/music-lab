@@ -1,10 +1,12 @@
-const CACHE_NAME = 'sol16-pwa-v5';
+const CACHE_NAME = 'sol16-pwa-v6';
 
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.webmanifest',
   './styles/main.css',
+  './fonts/silkscreen-400.woff2',
+  './fonts/silkscreen-700.woff2',
   './icons/icon.svg',
   './icons/icon-192.png',
   './icons/icon-512.png',

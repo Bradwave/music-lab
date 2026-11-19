@@ -31,11 +31,12 @@ Open **http://127.0.0.1:4173** (or run `HOST=0.0.0.0 npm run dev` to access from
 
 ## Deploy to GitHub Pages (Instant HTTPS PWA)
 
-This repo includes [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml). After pushing to `main`:
+Because SOL-16 has zero build step (and includes `.nojekyll`), you can deploy directly from `main`:
 
-1. Go to **Settings → Pages** in your GitHub repository.
-2. Under **Build and deployment → Source**, choose **GitHub Actions**.
-3. Open your live `https://<username>.github.io/sol-16/` URL on your phone and tap **Add to Home Screen**!
+1. Ensure the repository visibility is **Public** (required for GitHub Pages on Free plans).
+2. Go to **Settings → Pages**.
+3. Under **Build and deployment → Source**, choose **Deploy from a branch** → **`main`** → **`/ (root)`** → **Save**.
+4. Open your live `https://<username>.github.io/sol-16/` URL on your phone and tap **Add to Home Screen**!
 
 ## Keyboard Shortcuts
 

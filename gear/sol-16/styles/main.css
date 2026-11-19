@@ -4,6 +4,22 @@
    3 rotary pixel knobs, 8 patterns (A-H), 6 tracks (incl. VOX & 8-chop SMPL).
    ============================================================================ */
 
+@font-face {
+  font-family: 'Silkscreen';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fonts/silkscreen-400.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Silkscreen';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../fonts/silkscreen-700.woff2') format('woff2');
+}
+
 :root {
   --bg-desk: #100e0c;
   --case-bg: #191613;
