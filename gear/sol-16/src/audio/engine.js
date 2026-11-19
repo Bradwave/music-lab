@@ -35,6 +35,29 @@ function makeSoftClipCurve(amount = 6) {
   return curve;
 }
 
+// Extreme-capable asymmetrical analog overdrive / fuzz curve (0 = clean, 1 = filthy crunch)
+function makeOverdriveCurve(driveNorm = 0) {
+  const n = 2048;
+  const curve = new Float32Array(n);
+  if (driveNorm <= 0.01) {
+    for (let i = 0; i < n; i++) curve[i] = (i * 2) / n - 1;
+    return curve;
+  }
+  const k = 1 + Math.pow(driveNorm, 1.55) * 44;
+  const asym = driveNorm * 0.16;
+  const biasOffset = Math.tanh(asym);
+  const norm = 1 / Math.max(0.001, Math.tanh(k + asym) - biasOffset);
+  const hardMix = Math.max(0, (driveNorm - 0.55) / 0.45);
+
+  for (let i = 0; i < n; i++) {
+    const x = (i * 2) / n - 1;
+    const soft = (Math.tanh(x * k + asym) - biasOffset) * norm;
+    const hard = Math.max(-0.82, Math.min(0.82, x * (1 + k * 0.45))) / 0.82;
+    curve[i] = soft * (1 - hardMix * 0.45) + hard * (hardMix * 0.45);
+  }
+  return curve;
+}
+
 function createWarmPlateIR(ctx, duration = 2.4, decay = 2.7) {
   const rate = ctx.sampleRate;
   const length = Math.floor(rate * duration);
@@ -159,28 +182,34 @@ export function initAudio() {
   duckBus.connect(sidechainGain);
   sidechainGain.connect(masterFilter);
 
-  // Per-track analog saturation + punchy compressor strips (including KICK & PERC!)
+  // Per-track analog overdrive + heavy compressor strips (including KICK & PERC!)
   CHANNELS.forEach(ch => {
     const input = audioCtx.createGain();
     const preGain = audioCtx.createGain();
     const shaper = audioCtx.createWaveShaper();
-    shaper.curve = makeSoftClipCurve(12);
-    shaper.oversample = '2x';
+    shaper.oversample = '4x';
+
+    // Warm post-distortion tone filter so extreme crunch stays thick, never harsh fizz
+    const postLp = audioCtx.createBiquadFilter();
+    postLp.type = 'lowpass';
+    postLp.frequency.value = 18000;
+    postLp.Q.value = 0.7;
 
     const comp = audioCtx.createDynamicsCompressor();
-    comp.knee.value = 10;
-    comp.attack.value = ch.id === 'bd' || ch.id === 'pr' ? 0.004 : 0.008;
-    comp.release.value = ch.id === 'bd' || ch.id === 'pr' ? 0.085 : 0.14;
+    comp.knee.value = 8;
+    comp.attack.value = ch.id === 'bd' || ch.id === 'pr' ? 0.003 : 0.006;
+    comp.release.value = ch.id === 'bd' || ch.id === 'pr' ? 0.07 : 0.12;
 
     const makeup = audioCtx.createGain();
 
     input.connect(preGain);
     preGain.connect(shaper);
-    shaper.connect(comp);
+    shaper.connect(postLp);
+    postLp.connect(comp);
     comp.connect(makeup);
     makeup.connect(ch.id === 'bd' || ch.id === 'pr' ? drumBus : duckBus);
 
-    trackStrips[ch.id] = { input, preGain, shaper, comp, makeup };
+    trackStrips[ch.id] = { input, preGain, shaper, postLp, comp, makeup };
     updateTrackDrive(ch.id);
   });
 
@@ -214,16 +243,21 @@ export function updateTrackDrive(chId) {
   const d = Math.max(0, Math.min(1, state.trackParams[chId]?.drive ?? 0.2));
   const strip = trackStrips[chId];
 
-  // Warm analog saturation drive + tight per-track compression squash
-  const pre = 0.95 + d * 3.1;
-  const threshold = -6 - d * 24;   // -6dB (open) -> -30dB (heavily squashed!)
-  const ratio = 1.5 + d * 8.5;     // 1.5:1 -> 10:1
-  const makeup = 1.0 + d * 0.45 - Math.max(0, d - 0.5) * 0.35; // balanced loudness
+  // Dramatic analog overdrive (clean -> warm console -> gritty MPC -> filthy squash!)
+  strip.shaper.curve = makeOverdriveCurve(d);
+  const pre = 1.0 + Math.pow(d, 1.45) * 9.5;
+  const postCut = 18000 - Math.pow(d, 0.85) * 13200; // warms extreme grit down to ~4.8kHz
+  const threshold = -4 - d * 40;                      // -4dB (open) -> -44dB (brickwall squash)
+  const ratio = 1.5 + Math.pow(d, 1.2) * 17.5;        // 1.5:1 -> 19:1
+  const knee = 12 - d * 10;                           // softer -> hard punchy knee
+  const makeup = 1.0 + d * 0.55 - Math.pow(d, 1.8) * 0.58; // keep perceived loudness punchy & safe
 
-  strip.preGain.gain.setTargetAtTime(pre, now, 0.025);
-  strip.comp.threshold.setTargetAtTime(threshold, now, 0.025);
-  strip.comp.ratio.setTargetAtTime(ratio, now, 0.025);
-  strip.makeup.gain.setTargetAtTime(makeup, now, 0.025);
+  strip.preGain.gain.setTargetAtTime(pre, now, 0.02);
+  strip.postLp.frequency.setTargetAtTime(Math.max(3800, postCut), now, 0.025);
+  strip.comp.threshold.setTargetAtTime(threshold, now, 0.02);
+  strip.comp.ratio.setTargetAtTime(ratio, now, 0.02);
+  strip.comp.knee.setTargetAtTime(Math.max(0, knee), now, 0.02);
+  strip.makeup.gain.setTargetAtTime(Math.max(0.65, makeup), now, 0.02);
 }
 
 export function updateAllTrackDrives() {
@@ -270,14 +304,16 @@ export function updateFxAudioParams() {
   }
 
   const compNorm = Math.max(0, Math.min(1, (state.comp ?? 42) / 100));
-  const baseDrive = 2 + compNorm * 22;
-  tapeSat.curve = makeSoftClipCurve(state.fx.TAPE ? 30 : baseDrive);
+  tapeSat.curve = state.fx.TAPE
+    ? makeOverdriveCurve(0.68)
+    : makeOverdriveCurve(compNorm * 0.58);
 
   // Master bus glue compressor (compresses EVERYTHING including Kick & Perc!)
-  masterComp.threshold.setTargetAtTime(-8 - compNorm * 24, now, 0.03);
-  masterComp.ratio.setTargetAtTime(1.8 + compNorm * 8.5, now, 0.03);
-  masterComp.release.setTargetAtTime(0.18 - compNorm * 0.08, now, 0.03);
-  masterGain.gain.setTargetAtTime(0.84 + compNorm * 0.44, now, 0.03);
+  masterComp.threshold.setTargetAtTime(-6 - compNorm * 34, now, 0.03);
+  masterComp.ratio.setTargetAtTime(1.8 + Math.pow(compNorm, 1.2) * 14.2, now, 0.03);
+  masterComp.knee.setTargetAtTime(14 - compNorm * 11, now, 0.03);
+  masterComp.release.setTargetAtTime(0.18 - compNorm * 0.1, now, 0.03);
+  masterGain.gain.setTargetAtTime(0.84 + compNorm * 0.55, now, 0.03);
 }
 
 export function triggerSidechain(time, intensity = 0.85) {
