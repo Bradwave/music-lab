@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#181512" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="SOL-16" />
+  <meta name="description" content="SOL-16 — Minimal pixel-art deep house & microhouse groovebox PWA inspired by Nanoloop and Pocket Operators." />
+  <title>SOL-16 // House Groovebox</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" type="image/svg+xml" href="./icons/icon.svg" />
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles/main.css" />
+</head>
+<body>
+  <main class="chassis" id="chassis">
+    <!-- MINIMAL HARDWARE HEADER + 8 PATTERNS (A-H) -->
+    <header class="top-bar">
+      <div class="brand">
+        <span class="screw" aria-hidden="true"></span>
+        <span class="brand-name">SOL-16</span>
+      </div>
+
+      <nav class="pattern-pills" aria-label="Patterns A to H">
+        <button class="px-btn pat-btn" data-pat="0" title="Pattern A: La Perla">A</button>
+        <button class="px-btn pat-btn" data-pat="1" title="Pattern B: Breakdown">B</button>
+        <button class="px-btn pat-btn" data-pat="2" title="Pattern C: Microhouse">C</button>
+        <button class="px-btn pat-btn" data-pat="3" title="Pattern D: Sunrise">D</button>
+        <button class="px-btn pat-btn" data-pat="4" title="Pattern E">E</button>
+        <button class="px-btn pat-btn" data-pat="5" title="Pattern F">F</button>
+        <button class="px-btn pat-btn" data-pat="6" title="Pattern G">G</button>
+        <button class="px-btn pat-btn" data-pat="7" title="Pattern H">H</button>
+      </nav>
+
+      <div class="top-actions">
+        <button id="btnGuide" class="px-btn icon-btn" title="Quick Guide" aria-label="Quick Guide">?</button>
+        <button id="btnMenu" class="px-btn icon-btn" title="Menu, Samples & Export" aria-label="Menu">≡</button>
+      </div>
+    </header>
+
+    <!-- 1-BIT PIXEL LCD DISPLAY -->
+    <section class="lcd-bezel" aria-label="LCD Display">
+      <canvas id="lcdCanvas" width="240" height="80"></canvas>
+    </section>
+
+    <!-- TRANSPORT + THREE CHUNKY PIXEL ROTARY KNOBS -->
+    <section class="deck-row">
+      <div class="transport-stack">
+        <button id="btnPlay" class="px-btn play-btn" title="Play / Stop (Space)">
+          <span id="ledPlay" class="led"></span>
+          <span id="txtPlay">PLAY</span>
+        </button>
+        <button id="btnRec" class="px-btn rec-btn" title="Live Record while playing (R)">
+          <span id="ledRec" class="led"></span>
+          <span>REC</span>
+        </button>
+      </div>
+
+      <div class="knob-panel">
+        <div id="knobA"></div>
+        <div id="knobB"></div>
+        <div id="knobC"></div>
+        <div class="knob-bank-switch" role="group" aria-label="Knob Function">
+          <button id="btnBankSound" class="px-btn bank-btn" data-bank="SOUND" title="Track Tone, Decay & Space">SND</button>
+          <button id="btnBankGroove" class="px-btn bank-btn" data-bank="GROOVE" title="Global BPM, Swing & Pump">BPM</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6 HOUSE & SAMPLE TRACKS WITH INLINE 1-TAP MUTE BARS -->
+    <section class="track-row" id="trackBar" aria-label="House Tracks">
+      <!-- Rendered by appView.js -->
+    </section>
+
+    <!-- SOUND BRUSH & LIVE PLAY STRIP -->
+    <section class="brush-section">
+      <div class="section-meta">
+        <span id="brushHint" class="meta-label">PICK SOUND · TAP TO HEAR & PAINT</span>
+        <div class="meta-actions">
+          <button id="btnLoadSampleInline" class="mini-action accent hidden" title="Load audio file (.mp3/.wav/.ogg/.m4a) onto this track">+ SMP</button>
+          <button id="btnGen" class="mini-action" title="Generate a fresh house groove for this track (G)">+ IDEA</button>
+          <button id="btnClear" class="mini-action danger" title="Clear this track">CLR</button>
+        </div>
+      </div>
+      <div class="brush-strip" id="brushStrip" aria-label="Sound Picker & Live Pads">
+        <!-- Rendered by appView.js -->
+      </div>
+    </section>
+
+    <!-- 4x4 NANOLOOP STEP GRID (EACH ROW = 1 BEAT) -->
+    <section class="step-grid" id="stepGrid" aria-label="16-Step Sequencer Grid">
+      <!-- 16 pads rendered by appView.js -->
+    </section>
+
+    <!-- 4 POCKET OPERATOR PUNCH-IN FX (HOLD TO PERFORM) -->
+    <section class="fx-section">
+      <div class="section-meta">
+        <span class="meta-label">HOLD FOR FX</span>
+        <span id="fxStatus" class="meta-status">READY</span>
+      </div>
+      <div class="fx-grid">
+        <button class="px-btn fx-btn" data-fx="RPT" title="Beat Repeat Stutter (Hold Z)">
+          <span class="fx-name">STUTTER</span>
+          <span class="fx-key">Z</span>
+        </button>
+        <button class="px-btn fx-btn" data-fx="DUB" title="Dub Tape Echo Flood (Hold X)">
+          <span class="fx-name">DUB</span>
+          <span class="fx-key">X</span>
+        </button>
+        <button class="px-btn fx-btn" data-fx="LPF" title="Underwater Club Filter (Hold C)">
+          <span class="fx-name">FILTER</span>
+          <span class="fx-key">C</span>
+        </button>
+        <button class="px-btn fx-btn" data-fx="TAPE" title="Lo-Fi Warm Tape Slowdown (Hold V)">
+          <span class="fx-name">TAPE</span>
+          <span class="fx-key">V</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- DRAG & DROP AUDIO / PROJECT INDICATOR -->
+    <div id="dropOverlay" class="drop-overlay hidden">
+      <span>DROP AUDIO SAMPLE OR .SOL16.JSON</span>
+    </div>
+  </main>
+
+  <!-- HIDDEN FILE PICKERS -->
+  <input id="fileAudioInput" type="file" accept="audio/*" class="hidden" />
+  <input id="fileProjectInput" type="file" accept=".json,.sol16.json,application/json" class="hidden" />
+
+  <!-- SETTINGS, SONG CHAIN, SAMPLES & EXPORT DRAWER -->
+  <div id="drawerBackdrop" class="overlay-backdrop hidden">
+    <aside class="drawer" role="dialog" aria-label="Settings, Samples and Export">
+      <div class="drawer-header">
+        <span class="drawer-title">SOL-16 MENU</span>
+        <button id="btnCloseDrawer" class="px-btn icon-btn" aria-label="Close">×</button>
+      </div>
+
+      <!-- SONG CHAIN (PATTERN ARRANGEMENT) -->
+      <div class="drawer-group">
+        <div class="drawer-label-row">
+          <span class="drawer-label">SONG CHAIN</span>
+          <div class="drawer-inline-actions">
+            <button id="btnChainToggle" class="mini-action">OFF</button>
+            <button id="btnChainClear" class="mini-action danger">CLR</button>
+          </div>
+        </div>
+        <div id="chainReadout" class="chain-readout">A → A → B → D</div>
+        <div class="chain-add-grid" id="chainAddGrid">
+          <!-- Buttons A-H to append to chain -->
+        </div>
+      </div>
+
+      <!-- HOUSE MOOD / KEY -->
+      <div class="drawer-group">
+        <div class="drawer-label">HOUSE MOOD / KEY</div>
+        <div class="mood-grid" id="moodGrid"></div>
+      </div>
+
+      <!-- SAMPLE TRACKS (VOX MELODIC & SMPL 8-CHOP) -->
+      <div class="drawer-group">
+        <div class="drawer-label">SAMPLES (OR DRAG &amp; DROP ANY AUDIO)</div>
+        <div class="drawer-btn-row">
+          <button id="btnLoadVox" class="px-btn drawer-btn">LOAD VOX AUDIO</button>
+          <button id="btnLoadSmpl" class="px-btn drawer-btn">LOAD 8-CHOP SMPL</button>
+        </div>
+        <div class="drawer-btn-row">
+          <button id="btnMicVox" class="px-btn drawer-btn">MIC → VOX</button>
+          <button id="btnMicSmpl" class="px-btn drawer-btn">MIC → 8 CHOPS</button>
+        </div>
+      </div>
+
+      <!-- IMPORT / EXPORT (JSON + MIDI + WAV) -->
+      <div class="drawer-group">
+        <div class="drawer-label">PROJECT, MIDI &amp; AUDIO EXPORT</div>
+        <div class="drawer-btn-row">
+          <button id="btnSaveJson" class="px-btn drawer-btn">SAVE .SOL16</button>
+          <button id="btnLoadJson" class="px-btn drawer-btn">LOAD .SOL16</button>
+        </div>
+        <div class="drawer-btn-row">
+          <button id="btnExportMidi" class="px-btn drawer-btn">EXPORT .MID</button>
+          <button id="btnWav" class="px-btn drawer-btn">REC .WAV</button>
+        </div>
+      </div>
+
+      <!-- EXTRAS -->
+      <div class="drawer-group">
+        <div class="drawer-btn-row">
+          <button id="btnVinyl" class="px-btn drawer-btn">VINYL DUST: ON</button>
+          <button id="btnCopy" class="px-btn drawer-btn">COPY PATTERN</button>
+        </div>
+        <button id="btnReset" class="px-btn drawer-btn subtle-danger">RESTORE DEMO GROOVES</button>
+      </div>
+    </aside>
+  </div>
+
+  <!-- QUICK VISUAL GUIDE OVERLAY -->
+  <div id="guideBackdrop" class="overlay-backdrop hidden">
+    <div class="drawer guide-modal" role="dialog" aria-label="How to Play SOL-16">
+      <div class="drawer-header">
+        <span class="drawer-title">HOW TO JAM</span>
+        <button id="btnCloseGuide" class="px-btn icon-btn" aria-label="Close">×</button>
+      </div>
+      <ol class="guide-steps">
+        <li>
+          <span class="step-badge">1</span>
+          <div>
+            <strong>PRESS PLAY</strong> (Space) — switch patterns <strong>A–H</strong> on top or build an automatic <strong>Song Chain</strong> in <strong>≡ Menu</strong>.
+          </div>
+        </li>
+        <li>
+          <span class="step-badge">2</span>
+          <div>
+            <strong>TWIST THE 3 KNOBS</strong> — drag up/down or scroll <strong>TONE</strong>, <strong>DECAY</strong> &amp; <strong>SPACE</strong>. Flip <strong>SND → BPM</strong> for <strong>BPM</strong>, <strong>SWING</strong> &amp; sidechain <strong>PUMP</strong>.
+          </div>
+        </li>
+        <li>
+          <span class="step-badge">3</span>
+          <div>
+            <strong>PICK &amp; PAINT + SAMPLES</strong> — tap any sound/chord chip and paint the <strong>4×4 grid</strong>. Drop any audio file onto the window to auto-slice 8 chops on <strong>SMPL</strong> or pitch it on <strong>VOX</strong>!
+          </div>
+        </li>
+        <li>
+          <span class="step-badge">4</span>
+          <div>
+            <strong>EXPORT ANYWHERE</strong> — save complete songs + custom samples as <strong>.sol16.json</strong>, export multi-track <strong>.MID</strong> for Ableton/Logic, or record <strong>.WAV</strong>.
+          </div>
+        </li>
+      </ol>
+      <div class="guide-keys">
+        <span>SPACE: PLAY</span>
+        <span>1–6: TRACK</span>
+        <span>A–K: PADS</span>
+        <span>Z–V: FX</span>
+      </div>
+      <button id="btnGuideStart" class="px-btn active-orange drawer-btn">GOT IT — LET'S JAM</button>
+    </div>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "name": "sol-16",
+  "version": "1.0.0",
+  "description": "SOL-16 — Minimal Pixel House Groovebox PWA inspired by Nanoloop & Pocket Operators",
+  "type": "module",
+  "scripts": {
+    "dev": "node server.mjs",
+    "start": "node server.mjs"
+  },
+  "keywords": [
+    "pwa",
+    "groovebox",
+    "deep-house",
+    "microhouse",
+    "web-audio",
+    "synthesizer",
+    "nanoloop",
+    "pocket-operator"
+  ],
+  "license": "MIT"
+}

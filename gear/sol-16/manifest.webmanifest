@@ -1,0 +1,31 @@
+{
+  "name": "SOL-16 House Groovebox",
+  "short_name": "SOL-16",
+  "description": "Minimal pixel-art deep house & microhouse groovebox inspired by Nanoloop and Pocket Operators.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#12100e",
+  "theme_color": "#1a1714",
+  "categories": ["music", "entertainment"],
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
