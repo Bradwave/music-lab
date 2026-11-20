@@ -29,12 +29,17 @@ export const state = {
     sm: 0
   },
   mutes: { bd: false, pr: false, bs: false, ch: false, vx: false, sm: false },
-  knobBank: 'SOUND', // 'SOUND' (Tone, Decay, Space, Drive) | 'GROOVE' (BPM, Swing, Pump, Comp)
+  knobBank: 'SOUND', // 'SOUND' | 'MIX' | 'GROOVE'
+  viewMode: 'GRID',  // 'GRID' | 'KEYS' (Minimal Piano Keyboard!)
+  pianoOctave: 3,    // C3..E4 default (range 1..5)
+  selectedStep: 0,   // Target step for step-entry in KEYS mode
   moodId: 'sunset',
   bpm: 123,
   swing: 34,
-  pump: 62, // 0..100 kick sidechain pump
-  comp: 42, // 0..100 master bus compression + analog glue drive
+  pump: 62,
+  comp: 42,
+  masterVol: 88,     // 0..100 granular master output level
+  vinylLevel: 32,    // 0..100 granular vinyl dust level
   vinylOn: true,
   isPlaying: false,
   isRec: false,
@@ -101,11 +106,16 @@ export function normalizePatterns(rawPatterns) {
     const pat = createEmptyPattern();
     CHANNELS.forEach(c => {
       if (src && Array.isArray(src[c.id]) && src[c.id].length === 16) {
-        pat[c.id] = src[c.id].map(s => ({
-          on: Boolean(s && s.on),
-          note: Number(s && s.note) || 0,
-          accent: s && s.accent === 0 ? 0 : 1
-        }));
+        pat[c.id] = src[c.id].map(s => {
+          const step = {
+            on: Boolean(s && s.on),
+            note: Number(s && s.note) || 0,
+            accent: s && s.accent === 0 ? 0 : 1
+          };
+          if (s && typeof s.midi === 'number') step.midi = s.midi;
+          if (s && Array.isArray(s.notes) && s.notes.length > 0) step.notes = s.notes.map(Number);
+          return step;
+        });
       } else if (demo[i] && demo[i][c.id]) {
         pat[c.id] = demo[i][c.id];
       }
@@ -126,6 +136,8 @@ export function saveState() {
       swing: state.swing,
       pump: state.pump,
       comp: state.comp,
+      masterVol: state.masterVol,
+      vinylLevel: state.vinylLevel,
       moodId: state.moodId,
       vinylOn: state.vinylOn
     };
@@ -150,7 +162,9 @@ export function loadState() {
             tone: Number(parsed.trackParams[c.id].tone ?? c.defaultTone),
             decay: Number(parsed.trackParams[c.id].decay ?? c.defaultDecay),
             space: Number(parsed.trackParams[c.id].space ?? c.defaultSpace),
-            drive: Number(parsed.trackParams[c.id].drive ?? c.defaultDrive)
+            drive: Number(parsed.trackParams[c.id].drive ?? c.defaultDrive),
+            vol: Number(parsed.trackParams[c.id].vol ?? c.defaultVol),
+            pan: Number(parsed.trackParams[c.id].pan ?? c.defaultPan)
           };
         }
       });
@@ -163,6 +177,8 @@ export function loadState() {
     if (typeof parsed.swing === 'number') state.swing = Math.max(0, Math.min(65, parsed.swing));
     if (typeof parsed.pump === 'number') state.pump = Math.max(0, Math.min(100, parsed.pump));
     if (typeof parsed.comp === 'number') state.comp = Math.max(0, Math.min(100, parsed.comp));
+    if (typeof parsed.masterVol === 'number') state.masterVol = Math.max(0, Math.min(100, parsed.masterVol));
+    if (typeof parsed.vinylLevel === 'number') state.vinylLevel = Math.max(0, Math.min(100, parsed.vinylLevel));
     if (typeof parsed.moodId === 'string') state.moodId = parsed.moodId;
     if (typeof parsed.vinylOn === 'boolean') state.vinylOn = parsed.vinylOn;
   } catch {
@@ -180,6 +196,8 @@ export function resetAllToDemo() {
   state.swing = 34;
   state.pump = 62;
   state.comp = 42;
+  state.masterVol = 88;
+  state.vinylLevel = 32;
   state.moodId = 'sunset';
   state.vinylOn = true;
   state.activePattern = 0;

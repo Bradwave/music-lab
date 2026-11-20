@@ -12,7 +12,7 @@
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="icon" type="image/svg+xml" href="./icons/icon.svg" />
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="./styles/main.css?v=9" />
+  <link rel="stylesheet" href="./styles/main.css?v=10" />
 </head>
 <body>
   <main class="chassis" id="chassis">
@@ -60,6 +60,7 @@
 
       <div class="knob-bank-switch" role="group" aria-label="Knob Function">
         <button id="btnBankSound" class="px-btn bank-btn" data-bank="SOUND" title="Track Tone, Decay, Space & Drive">SND</button>
+        <button id="btnBankMix" class="px-btn bank-btn" data-bank="MIX" title="Granular Track Vol, Pan, Dust & Master Vol">MIX</button>
         <button id="btnBankGroove" class="px-btn bank-btn" data-bank="GROOVE" title="Master BPM, Swing, Pump & Comp">MSTR</button>
       </div>
     </section>
@@ -82,6 +83,7 @@
       <div class="section-meta">
         <span id="brushHint" class="meta-label">PICK SOUND · TAP TO HEAR & PAINT</span>
         <div class="meta-actions">
+          <button id="btnToggleKeys" class="mini-action" title="Toggle Minimal Piano Keyboard (P)">KEYS</button>
           <button id="btnLoadSampleInline" class="mini-action accent hidden" title="Load audio file (.mp3/.wav/.ogg/.m4a) onto this track">+ SMP</button>
           <button id="btnGen" class="mini-action" title="Generate a fresh house groove for this track (G)">+ IDEA</button>
           <button id="btnClear" class="mini-action danger" title="Clear this track">CLR</button>
@@ -96,6 +98,9 @@
     <section class="step-grid" id="stepGrid" aria-label="16-Step Sequencer Grid">
       <!-- 16 pads rendered by appView.js -->
     </section>
+
+    <!-- MINIMAL PIXEL PIANO KEYBOARD (SWAPS WITH 4x4 GRID) -->
+    <section class="piano-panel hidden" id="pianoPanel" aria-label="Minimal Piano Keyboard"></section>
 
     <!-- 4 POCKET OPERATOR PUNCH-IN FX (HOLD TO PERFORM) -->
     <section class="fx-section">
@@ -200,7 +205,7 @@
           <button id="btnClearAll" class="px-btn drawer-btn subtle-danger">CLEAR ALL (A–H)</button>
         </div>
         <button id="btnReset" class="px-btn drawer-btn subtle-danger">RESTORE DEMO GROOVES</button>
-        <button id="btnForceUpdate" class="px-btn drawer-btn subtle-danger">UPDATE APP (CLEAR CACHE · v9)</button>
+        <button id="btnForceUpdate" class="px-btn drawer-btn subtle-danger">UPDATE APP (CLEAR CACHE · v10)</button>
       </div>
     </aside>
   </div>
@@ -222,13 +227,13 @@
         <li>
           <span class="step-badge">2</span>
           <div>
-            <strong>TWIST THE 4 KNOBS</strong> — drag up/down or scroll <strong>TONE</strong>, <strong>DECAY</strong>, <strong>SPACE</strong> &amp; <strong>DRIVE</strong> (saturation + compression). Flip <strong>SND → MSTR</strong> for <strong>BPM</strong>, <strong>SWING</strong>, <strong>PUMP</strong> &amp; master <strong>COMP</strong>.
+            <strong>TWIST THE 4 KNOBS</strong> — <strong>SND</strong> shapes <strong>TONE</strong>, <strong>DECAY</strong>, <strong>SPACE</strong> &amp; <strong>DRIVE</strong>; <strong>MIX</strong> dials granular <strong>VOL</strong>, <strong>PAN</strong>, <strong>DUST</strong> &amp; <strong>M.VOL</strong>; <strong>MSTR</strong> controls <strong>BPM</strong>, <strong>SWING</strong>, <strong>PUMP</strong> &amp; <strong>COMP</strong>.
           </div>
         </li>
         <li>
           <span class="step-badge">3</span>
           <div>
-            <strong>PICK &amp; PAINT + SAMPLES</strong> — tap any sound/chord chip and paint the <strong>4×4 grid</strong>. Drop any audio file onto the window to auto-slice 8 chops on <strong>SMPL</strong> or pitch it on <strong>VOX</strong>!
+            <strong>GRID OR PIANO KEYS</strong> — paint chords/drums on the <strong>4×4 grid</strong>, or tap <strong>KEYS</strong> (or <strong>P</strong>) for a chromatic multi-touch piano with scale dots &amp; custom polyphonic chord recording!
           </div>
         </li>
         <li>
@@ -248,6 +253,6 @@
     </div>
   </div>
 
-  <script type="module" src="./src/main.js?v=9"></script>
+  <script type="module" src="./src/main.js?v=10"></script>
 </body>
 </html>

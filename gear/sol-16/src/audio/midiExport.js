@@ -113,21 +113,23 @@ export function exportMidiFile() {
         const vel = st.accent ? 106 : 64;
 
         if (tc.id === 'bd') {
-          addNote(events, tc.midiCh, 36, vel, start, STEP_TICKS - 10);
+          addNote(events, tc.midiCh, typeof st.midi === 'number' ? st.midi : 36, vel, start, STEP_TICKS - 10);
         } else if (tc.id === 'pr') {
           addNote(events, tc.midiCh, PERC_GM_MIDI[st.note % PERC_GM_MIDI.length], vel, start, STEP_TICKS - 10);
         } else if (tc.id === 'bs') {
-          const midi = mood.bassMidi[st.note % mood.bassMidi.length];
+          const midi = typeof st.midi === 'number' ? st.midi : mood.bassMidi[st.note % mood.bassMidi.length];
           addNote(events, tc.midiCh, midi, vel, start, Math.round(STEP_TICKS * 1.4));
         } else if (tc.id === 'ch') {
-          const voicing = mood.chords[st.note % mood.chords.length];
-          voicing.notes.forEach(n => addNote(events, tc.midiCh, n, vel, start, STEP_TICKS * 2));
+          const notes = Array.isArray(st.notes) && st.notes.length > 0
+            ? st.notes
+            : (typeof st.midi === 'number' ? [st.midi] : mood.chords[st.note % mood.chords.length].notes);
+          notes.forEach(n => addNote(events, tc.midiCh, n, vel, start, STEP_TICKS * 2));
         } else if (tc.id === 'vx') {
-          const midi = mood.voxMidi[st.note % mood.voxMidi.length];
+          const midi = typeof st.midi === 'number' ? st.midi : mood.voxMidi[st.note % mood.voxMidi.length];
           addNote(events, tc.midiCh, midi, vel, start, Math.round(STEP_TICKS * 1.5));
         } else {
-          // SMPL chops mapped cleanly to C3..G3 (MIDI 48..55)
-          addNote(events, tc.midiCh, 48 + (st.note % 8), vel, start, STEP_TICKS);
+          const midi = typeof st.midi === 'number' ? st.midi : 48 + (st.note % 8);
+          addNote(events, tc.midiCh, midi, vel, start, STEP_TICKS);
         }
       });
     });

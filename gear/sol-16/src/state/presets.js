@@ -32,7 +32,9 @@ export function createDefaultTrackParams() {
       tone: c.defaultTone,
       decay: c.defaultDecay,
       space: c.defaultSpace,
-      drive: c.defaultDrive
+      drive: c.defaultDrive,
+      vol: c.defaultVol,
+      pan: c.defaultPan
     };
   });
   return params;

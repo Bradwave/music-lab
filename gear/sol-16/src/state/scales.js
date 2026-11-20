@@ -1,13 +1,27 @@
 // Musical scales, chord voicings & track brush definitions tailored for Deep House / Microhouse
 
 export const CHANNELS = [
-  { id: 'bd', name: 'KICK',  defaultTone: 0.58, defaultDecay: 0.48, defaultSpace: 0.12, defaultDrive: 0.30 },
-  { id: 'pr', name: 'PERC',  defaultTone: 0.68, defaultDecay: 0.45, defaultSpace: 0.36, defaultDrive: 0.25 },
-  { id: 'bs', name: 'BASS',  defaultTone: 0.48, defaultDecay: 0.52, defaultSpace: 0.18, defaultDrive: 0.24 },
-  { id: 'ch', name: 'CHORD', defaultTone: 0.56, defaultDecay: 0.60, defaultSpace: 0.58, defaultDrive: 0.18 },
-  { id: 'vx', name: 'VOX',   defaultTone: 0.52, defaultDecay: 0.50, defaultSpace: 0.66, defaultDrive: 0.16 },
-  { id: 'sm', name: 'SMPL',  defaultTone: 0.62, defaultDecay: 0.55, defaultSpace: 0.54, defaultDrive: 0.22 }
+  { id: 'bd', name: 'KICK',  defaultTone: 0.58, defaultDecay: 0.48, defaultSpace: 0.12, defaultDrive: 0.30, defaultVol: 0.90, defaultPan: 0 },
+  { id: 'pr', name: 'PERC',  defaultTone: 0.68, defaultDecay: 0.45, defaultSpace: 0.36, defaultDrive: 0.25, defaultVol: 0.82, defaultPan: 0 },
+  { id: 'bs', name: 'BASS',  defaultTone: 0.48, defaultDecay: 0.52, defaultSpace: 0.18, defaultDrive: 0.24, defaultVol: 0.86, defaultPan: 0 },
+  { id: 'ch', name: 'CHORD', defaultTone: 0.56, defaultDecay: 0.60, defaultSpace: 0.58, defaultDrive: 0.18, defaultVol: 0.84, defaultPan: 0 },
+  { id: 'vx', name: 'VOX',   defaultTone: 0.52, defaultDecay: 0.50, defaultSpace: 0.66, defaultDrive: 0.16, defaultVol: 0.82, defaultPan: 0 },
+  { id: 'sm', name: 'SMPL',  defaultTone: 0.62, defaultDecay: 0.55, defaultSpace: 0.54, defaultDrive: 0.22, defaultVol: 0.82, defaultPan: 0 }
 ];
+
+const NOTE_NAMES_SHARP = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B'];
+
+export function midiToNoteName(midi) {
+  const m = Math.max(0, Math.min(127, Math.round(midi)));
+  const name = NOTE_NAMES_SHARP[m % 12];
+  const oct = Math.floor(m / 12) - 1;
+  return `${name}${oct}`;
+}
+
+export function getMoodPitchClasses(moodId) {
+  const mood = getMood(moodId);
+  return new Set(mood.bassMidi.map(m => m % 12));
+}
 
 // Kick styles (4 tactile brushes)
 export const KICK_BRUSHES = [
@@ -152,6 +166,19 @@ export function getBrushList(chId, moodId, smplUseCustom = false) {
     return SMPL_BUILTINS.map(b => ({ note: b.id, label: b.label }));
   }
   return mood.scaleNames.map((n, idx) => ({ note: idx, label: n }));
+}
+
+export function getStepDisplayLabel(chId, step, moodId, smplUseCustom = false) {
+  if (!step || !step.on) return '';
+  if (Array.isArray(step.notes) && step.notes.length > 0) {
+    const sorted = [...step.notes].sort((a, b) => a - b);
+    const root = midiToNoteName(sorted[0]);
+    return sorted.length > 1 ? `${root}+${sorted.length - 1}` : root;
+  }
+  if (typeof step.midi === 'number') {
+    return midiToNoteName(step.midi);
+  }
+  return getStepLabel(chId, step.note, moodId, smplUseCustom);
 }
 
 export function getStepLabel(chId, noteIdx, moodId, smplUseCustom = false) {

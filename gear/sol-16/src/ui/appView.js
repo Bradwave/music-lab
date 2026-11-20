@@ -14,7 +14,8 @@ import {
   CHANNELS,
   MOODS,
   getBrushList,
-  getStepLabel
+  getStepLabel,
+  getStepDisplayLabel
 } from '../state/scales.js';
 import {
   PATTERN_LETTERS,
@@ -29,6 +30,8 @@ import {
   updateVinylAudio,
   updateTrackDrive,
   updateAllTrackDrives,
+  updateTrackMix,
+  updateAllTrackMix,
   recordMicSample,
   importAudioFile
 } from '../audio/engine.js';
@@ -38,6 +41,7 @@ import { toggleWavRecording } from '../audio/wavRecorder.js';
 import { exportProjectJson, importProjectJson } from '../audio/projectIO.js';
 import { exportMidiFile } from '../audio/midiExport.js';
 import { createPixelKnob } from './knob.js';
+import { createMinimalPiano } from './piano.js';
 
 export function mountAppView() {
   const chassisEl = document.getElementById('chassis');
@@ -54,8 +58,11 @@ export function mountAppView() {
   const btnRec = document.getElementById('btnRec');
   const ledRec = document.getElementById('ledRec');
   const btnBankSound = document.getElementById('btnBankSound');
+  const btnBankMix = document.getElementById('btnBankMix');
   const btnBankGroove = document.getElementById('btnBankGroove');
 
+  const btnToggleKeys = document.getElementById('btnToggleKeys');
+  const pianoPanelEl = document.getElementById('pianoPanel');
   const btnLoadSampleInline = document.getElementById('btnLoadSampleInline');
   const btnGen = document.getElementById('btnGen');
   const btnClear = document.getElementById('btnClear');
@@ -95,19 +102,31 @@ export function mountAppView() {
   let pendingAudioTarget = 'sm';
 
   // -------------------------------------------------------------------------
-  // 1. THREE PIXEL ROTARY KNOBS
-  //    SND bank: TONE | DECAY | SPACE
-  //    BPM bank: BPM  | SWING | PUMP
+  // 1. FOUR PIXEL ROTARY KNOBS
+  //    SND  bank: TONE | DECAY | SPACE | DRIVE
+  //    MIX  bank: VOL  | PAN   | DUST  | M.VOL
+  //    MSTR bank: BPM  | SWING | PUMP  | COMP
   // -------------------------------------------------------------------------
+  const formatPan = v => {
+    const p = Math.round(v * 50);
+    if (Math.abs(p) < 2) return 'C';
+    return p < 0 ? `L${Math.abs(p)}` : `R${p}`;
+  };
+
   const knobA = createPixelKnob(document.getElementById('knobA'), {
     label: 'TONE',
     onChange: (val, norm) => {
       initAudio();
+      const ch = CHANNELS.find(c => c.id === state.activeChannel);
       if (state.knobBank === 'SOUND') {
         state.trackParams[state.activeChannel].tone = val;
-        const ch = CHANNELS.find(c => c.id === state.activeChannel);
         const lbl = state.activeChannel === 'vx' ? 'VOWEL' : `${ch.name} TONE`;
         showLcdKnob(lbl, `${Math.round(val * 100)}%`, norm);
+      } else if (state.knobBank === 'MIX') {
+        state.trackParams[state.activeChannel].vol = val;
+        updateTrackMix(state.activeChannel);
+        updateTrackVolMeter(state.activeChannel);
+        showLcdKnob(`${ch.name} VOL`, `${Math.round(val * 100)}%`, norm);
       } else {
         state.bpm = Math.round(val);
         updateFxAudioParams();
@@ -121,10 +140,14 @@ export function mountAppView() {
     label: 'DECAY',
     onChange: (val, norm) => {
       initAudio();
+      const ch = CHANNELS.find(c => c.id === state.activeChannel);
       if (state.knobBank === 'SOUND') {
         state.trackParams[state.activeChannel].decay = val;
-        const ch = CHANNELS.find(c => c.id === state.activeChannel);
         showLcdKnob(`${ch.name} DECAY`, `${Math.round(val * 100)}%`, norm);
+      } else if (state.knobBank === 'MIX') {
+        state.trackParams[state.activeChannel].pan = val;
+        updateTrackMix(state.activeChannel);
+        showLcdKnob(`${ch.name} PAN`, formatPan(val), norm);
       } else {
         state.swing = Math.round(val);
         showLcdKnob('GROOVE SWING', `${state.swing}%`, norm);
@@ -137,10 +160,15 @@ export function mountAppView() {
     label: 'SPACE',
     onChange: (val, norm) => {
       initAudio();
+      const ch = CHANNELS.find(c => c.id === state.activeChannel);
       if (state.knobBank === 'SOUND') {
         state.trackParams[state.activeChannel].space = val;
-        const ch = CHANNELS.find(c => c.id === state.activeChannel);
         showLcdKnob(`${ch.name} SPACE`, `${Math.round(val * 100)}%`, norm);
+      } else if (state.knobBank === 'MIX') {
+        state.vinylLevel = Math.round(val);
+        state.vinylOn = state.vinylLevel > 0;
+        updateVinylAudio();
+        showLcdKnob('VINYL DUST', `${state.vinylLevel}%`, norm);
       } else {
         state.pump = Math.round(val);
         updateFxAudioParams();
@@ -154,11 +182,15 @@ export function mountAppView() {
     label: 'DRIVE',
     onChange: (val, norm) => {
       initAudio();
+      const ch = CHANNELS.find(c => c.id === state.activeChannel);
       if (state.knobBank === 'SOUND') {
         state.trackParams[state.activeChannel].drive = val;
         updateTrackDrive(state.activeChannel);
-        const ch = CHANNELS.find(c => c.id === state.activeChannel);
         showLcdKnob(`${ch.name} DRIVE`, `${Math.round(val * 100)}%`, norm);
+      } else if (state.knobBank === 'MIX') {
+        state.masterVol = Math.round(val);
+        updateFxAudioParams();
+        showLcdKnob('MASTER VOL', `${state.masterVol}%`, norm);
       } else {
         state.comp = Math.round(val);
         updateFxAudioParams();
@@ -170,11 +202,13 @@ export function mountAppView() {
 
   function syncKnobsUI() {
     btnBankSound.classList.toggle('active-orange', state.knobBank === 'SOUND');
+    btnBankMix.classList.toggle('active-orange', state.knobBank === 'MIX');
     btnBankGroove.classList.toggle('active-orange', state.knobBank === 'GROOVE');
 
+    const ch = CHANNELS.find(c => c.id === state.activeChannel) || CHANNELS[0];
+    const p = state.trackParams[state.activeChannel];
+
     if (state.knobBank === 'SOUND') {
-      const ch = CHANNELS.find(c => c.id === state.activeChannel) || CHANNELS[0];
-      const p = state.trackParams[state.activeChannel];
       knobA.configure({
         label: state.activeChannel === 'vx' ? 'VOWEL' : 'TONE',
         min: 0, max: 1, step: 0.01,
@@ -198,6 +232,31 @@ export function mountAppView() {
         min: 0, max: 1, step: 0.01,
         value: p.drive ?? ch.defaultDrive, defaultValue: ch.defaultDrive,
         formatValue: v => `${Math.round(v * 100)}%`
+      });
+    } else if (state.knobBank === 'MIX') {
+      knobA.configure({
+        label: 'VOL',
+        min: 0, max: 1, step: 0.01,
+        value: p.vol ?? ch.defaultVol, defaultValue: ch.defaultVol,
+        formatValue: v => `${Math.round(v * 100)}%`
+      });
+      knobB.configure({
+        label: 'PAN',
+        min: -1, max: 1, step: 0.02,
+        value: p.pan ?? 0, defaultValue: 0,
+        formatValue: formatPan
+      });
+      knobC.configure({
+        label: 'DUST',
+        min: 0, max: 100, step: 1,
+        value: state.vinylOn ? (state.vinylLevel ?? 32) : 0, defaultValue: 32,
+        formatValue: v => `${Math.round(v)}%`
+      });
+      knobD.configure({
+        label: 'M.VOL',
+        min: 0, max: 100, step: 1,
+        value: state.masterVol ?? 88, defaultValue: 88,
+        formatValue: v => `${Math.round(v)}%`
       });
     } else {
       knobA.configure({
@@ -233,6 +292,12 @@ export function mountAppView() {
     showLcdMessage('SND: TONE DECAY SPACE DRIVE');
   });
 
+  btnBankMix.addEventListener('click', () => {
+    state.knobBank = 'MIX';
+    syncKnobsUI();
+    showLcdMessage('MIX: VOL PAN DUST M.VOL');
+  });
+
   btnBankGroove.addEventListener('click', () => {
     state.knobBank = 'GROOVE';
     syncKnobsUI();
@@ -264,9 +329,11 @@ export function mountAppView() {
 
       const muteBar = document.createElement('button');
       muteBar.className = `track-mute-bar ${isMuted ? 'is-muted' : ''}`;
+      muteBar.dataset.ch = ch.id;
       muteBar.title = isMuted ? `Unmute ${ch.name}` : `Mute ${ch.name}`;
       muteBar.setAttribute('aria-label', `${isMuted ? 'Unmute' : 'Mute'} ${ch.name}`);
-      muteBar.innerHTML = '<span class="track-mute-led"></span>';
+      const volPct = Math.round((state.trackParams[ch.id]?.vol ?? ch.defaultVol) * 100);
+      muteBar.innerHTML = `<span class="track-mute-led" style="width:${volPct}%"></span>`;
       muteBar.addEventListener('click', () => {
         initAudio();
         state.mutes[ch.id] = !state.mutes[ch.id];
@@ -278,6 +345,13 @@ export function mountAppView() {
       unit.appendChild(muteBar);
       trackBarEl.appendChild(unit);
     });
+  }
+
+  function updateTrackVolMeter(chId) {
+    const bar = trackBarEl.querySelector(`.track-mute-bar[data-ch="${chId}"] .track-mute-led`);
+    if (!bar) return;
+    const volPct = Math.round((state.trackParams[chId]?.vol ?? 0.85) * 100);
+    bar.style.width = `${volPct}%`;
   }
 
   // -------------------------------------------------------------------------
@@ -455,14 +529,18 @@ export function mountAppView() {
           st.on = true;
           st.note = brushNote;
           st.accent = 1;
+          delete st.midi;
+          delete st.notes;
           if (!state.isPlaying) {
             const { audioCtx } = getAudioNodes();
             triggerChannelSound(chId, audioCtx.currentTime, st);
           }
           showLcdMessage(`S${i + 1}: ${getStepLabel(chId, st.note, state.moodId, state.smplUseCustom)}`, 900);
-        } else if (st.note !== brushNote) {
+        } else if (st.note !== brushNote || typeof st.midi === 'number' || Array.isArray(st.notes)) {
           st.note = brushNote;
           st.accent = 1;
+          delete st.midi;
+          delete st.notes;
           if (!state.isPlaying) {
             const { audioCtx } = getAudioNodes();
             triggerChannelSound(chId, audioCtx.currentTime, st);
@@ -470,6 +548,8 @@ export function mountAppView() {
           showLcdMessage(`S${i + 1} -> ${getStepLabel(chId, st.note, state.moodId, state.smplUseCustom)}`, 900);
         } else {
           st.on = false;
+          delete st.midi;
+          delete st.notes;
           showLcdMessage(`S${i + 1} CLEARED`, 700);
         }
 
@@ -507,18 +587,50 @@ export function mountAppView() {
     ].filter(Boolean).join(' ');
 
     const valEl = pad.querySelector('.step-val');
-    valEl.textContent = st.on ? getStepLabel(chId, st.note, state.moodId, state.smplUseCustom) : '';
+    valEl.textContent = getStepDisplayLabel(chId, st, state.moodId, state.smplUseCustom);
   }
 
   function renderGrid() {
     for (let i = 0; i < 16; i++) updateSinglePad(i);
   }
 
+  // Minimal Chromatic Piano Keyboard (swaps cleanly with 4x4 Grid!)
+  const piano = createMinimalPiano(pianoPanelEl, {
+    onStepWritten(stepIdx) {
+      updateSinglePad(stepIdx);
+      renderPatterns();
+    }
+  });
+
+  function renderViewMode() {
+    const isKeys = state.viewMode === 'KEYS';
+    stepGridEl.classList.toggle('hidden', isKeys);
+    brushStripEl.classList.toggle('hidden', isKeys);
+    pianoPanelEl.classList.toggle('hidden', !isKeys);
+    btnToggleKeys.classList.toggle('active-orange', isKeys);
+    btnToggleKeys.textContent = isKeys ? 'GRID' : 'KEYS';
+    if (isKeys) {
+      const ch = CHANNELS.find(c => c.id === state.activeChannel);
+      brushHintEl.textContent = `PIANO · ${ch.name} (MULTI-TOUCH)`;
+      piano.render();
+    } else {
+      renderBrushStrip();
+    }
+  }
+
+  btnToggleKeys.addEventListener('click', () => {
+    initAudio();
+    state.viewMode = state.viewMode === 'KEYS' ? 'GRID' : 'KEYS';
+    renderViewMode();
+    showLcdMessage(state.viewMode === 'KEYS' ? 'MINIMAL PIANO KEYS' : '4x4 STEP GRID');
+  });
+
   setPlayheadListener((stepIdx) => {
     const pads = stepGridEl.children;
     for (let i = 0; i < pads.length; i++) {
       pads[i].classList.toggle('is-playing', i === stepIdx);
     }
+    piano.updatePlayhead(stepIdx);
   });
 
   // -------------------------------------------------------------------------
@@ -848,6 +960,7 @@ export function mountAppView() {
     updateVinylAudio();
     updateFxAudioParams();
     updateAllTrackDrives();
+    updateAllTrackMix();
     state.drawerOpen = false;
     showLcdMessage('DEMO GROOVES RESTORED');
     renderDrawer();
@@ -945,15 +1058,18 @@ export function mountAppView() {
     else if (reason === 'pattern') {
       renderPatterns();
       renderGrid();
+      piano.renderMiniSteps();
     } else if (reason === 'channel' || reason === 'mood' || reason === 'reset') {
       renderTrackBar();
       renderBrushStrip();
       renderGrid();
+      renderViewMode();
       syncKnobsUI();
       renderPatterns();
       renderDrawer();
     } else if (reason === 'grid') {
       renderGrid();
+      piano.renderMiniSteps();
     } else if (reason === 'sample' || reason === 'wav') {
       renderBrushStrip();
       renderGrid();
@@ -966,6 +1082,7 @@ export function mountAppView() {
   renderTrackBar();
   renderBrushStrip();
   renderGrid();
+  renderViewMode();
   renderPatterns();
   renderTransport();
   syncKnobsUI();
@@ -982,6 +1099,10 @@ export function mountAppView() {
     setFxState,
     generateCurrentTrack() {
       btnGen.click();
-    }
+    },
+    togglePianoMode() {
+      btnToggleKeys.click();
+    },
+    piano
   };
 }

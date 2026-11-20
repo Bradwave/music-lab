@@ -14,7 +14,9 @@ function playKick(time, step, params) {
   const accentScale = step.accent ? 1.0 : 0.56;
   const { tone, decay: decParam, space } = params;
 
-  const baseFreq = (47 * Math.pow(2, brush.pitch / 12)) * getTapePitchFactor();
+  const baseFreq = typeof step.midi === 'number'
+    ? Math.max(32, Math.min(140, midiToFreq(step.midi - 12))) * getTapePitchFactor()
+    : (47 * Math.pow(2, brush.pitch / 12)) * getTapePitchFactor();
   const dur = 0.13 + decParam * 0.36;
   const vel = brush.vol * accentScale;
 
@@ -266,7 +268,9 @@ function playBass(time, step, params) {
   const { audioCtx, dubSend, reverbSend } = getAudioNodes();
   const duckBus = getTrackInput('bs');
   const mood = getMood(state.moodId);
-  const midi = mood.bassMidi[step.note % mood.bassMidi.length];
+  const midi = typeof step.midi === 'number'
+    ? step.midi
+    : mood.bassMidi[step.note % mood.bassMidi.length];
   const freq = midiToFreq(midi) * getTapePitchFactor();
   const accentScale = step.accent ? 1.0 : 0.68;
   const { tone, decay: decParam, space } = params;
@@ -333,7 +337,11 @@ function playChord(time, step, params) {
   const { audioCtx, dubSend, reverbSend } = getAudioNodes();
   const duckBus = getTrackInput('ch');
   const mood = getMood(state.moodId);
-  const voicing = mood.chords[step.note % mood.chords.length];
+  const notes = Array.isArray(step.notes) && step.notes.length > 0
+    ? step.notes
+    : (typeof step.midi === 'number'
+      ? [step.midi]
+      : mood.chords[step.note % mood.chords.length].notes);
   const accentScale = step.accent ? 1.0 : 0.62;
   const { tone, decay: decParam, space } = params;
   const dur = 0.14 + decParam * 0.92;
@@ -364,7 +372,8 @@ function playChord(time, step, params) {
   env.connect(sendRev);
   sendRev.connect(reverbSend);
 
-  voicing.notes.forEach((m, idx) => {
+  const perVoiceGain = notes.length === 1 ? 0.52 : Math.min(0.32, 1.15 / notes.length);
+  notes.forEach((m, idx) => {
     const f = midiToFreq(m) * pf;
     const oscA = audioCtx.createOscillator();
     const oscB = audioCtx.createOscillator();
@@ -378,7 +387,7 @@ function playChord(time, step, params) {
     oscB.frequency.setValueAtTime(f, time);
     oscB.detune.value = idx % 2 === 0 ? 7 : -7;
 
-    noteGain.gain.value = 0.26;
+    noteGain.gain.value = perVoiceGain;
     oscA.connect(noteGain);
     oscB.connect(noteGain);
     noteGain.connect(filt);
@@ -395,7 +404,9 @@ function playVox(time, step, params) {
   const { audioCtx, dubSend, reverbSend, noiseBuffer } = getAudioNodes();
   const duckBus = getTrackInput('vx');
   const mood = getMood(state.moodId);
-  const midi = mood.voxMidi[step.note % mood.voxMidi.length];
+  const midi = typeof step.midi === 'number'
+    ? step.midi
+    : mood.voxMidi[step.note % mood.voxMidi.length];
   const accentScale = step.accent ? 1.0 : 0.62;
   const { tone, decay: decParam, space } = params;
   const dur = 0.1 + decParam * 0.56;
@@ -530,15 +541,18 @@ function playSmpl(time, step, params) {
   const pf = getTapePitchFactor();
 
   // Mode A: Custom Imported / Mic Audio auto-sliced into 8 playable chops (S1..S8)
+  // OR pitched chromatically from slice 0 when played via Piano Keys!
   if (state.smplUseCustom && state.smplBuffer) {
     const buf = state.smplBuffer;
+    const isChromatic = typeof step.midi === 'number';
     const sliceDur = buf.duration / 8;
-    const startOffset = idx * sliceDur;
+    const startOffset = isChromatic ? 0 : idx * sliceDur;
+    const rate = isChromatic ? Math.pow(2, (step.midi - 60) / 12) * pf : pf;
     const playDur = Math.max(0.06, Math.min(buf.duration - startOffset, 0.08 + decParam * Math.max(0.45, sliceDur * 1.4)));
 
     const src = audioCtx.createBufferSource();
     src.buffer = buf;
-    src.playbackRate.setValueAtTime(pf, time);
+    src.playbackRate.setValueAtTime(rate, time);
 
     // DJ-style Tone filter: left = warm lowpass, right = airy highpass/bright
     const filt = audioCtx.createBiquadFilter();
@@ -637,7 +651,7 @@ function playSmpl(time, step, params) {
   }
 
   // Pitched organic instruments (MARIM, PLUCK, BELL, STAB, WOOD, SHIM)
-  const f = midiToFreq(scaleMidi[idx]) * pf;
+  const f = midiToFreq(typeof step.midi === 'number' ? step.midi : scaleMidi[idx]) * pf;
   const dur = (idx === 0 || idx === 5 ? 0.14 : 0.22) + decParam * 0.55;
 
   const osc1 = audioCtx.createOscillator();
@@ -707,7 +721,7 @@ function playSmpl(time, step, params) {
 export function triggerChannelSound(chId, time, step) {
   const { audioCtx } = getAudioNodes();
   if (!audioCtx) return;
-  const params = state.trackParams[chId] || { tone: 0.55, decay: 0.5, space: 0.5 };
+  const params = state.trackParams[chId] || { tone: 0.55, decay: 0.5, space: 0.5, drive: 0.2 };
   switch (chId) {
     case 'bd': playKick(time, step, params); break;
     case 'pr': playPerc(time, step, params); break;
@@ -716,4 +730,22 @@ export function triggerChannelSound(chId, time, step) {
     case 'vx': playVox(time, step, params); break;
     case 'sm': playSmpl(time, step, params); break;
   }
+}
+
+// Expressive chromatic note playback for the integrated Minimal Piano Keyboard
+export function triggerPianoNote(chId, midiNote, time) {
+  const { audioCtx } = getAudioNodes();
+  if (!audioCtx) return;
+  const t = time ?? audioCtx.currentTime;
+  if (chId === 'pr') {
+    triggerChannelSound('pr', t, { on: true, note: Math.abs(midiNote) % 6, accent: 1 });
+    return;
+  }
+  const adjustedMidi = chId === 'bs' ? Math.max(24, midiNote - 12) : midiNote;
+  triggerChannelSound(chId, t, {
+    on: true,
+    note: state.selectedBrush[chId] || 0,
+    accent: 1,
+    midi: adjustedMidi
+  });
 }

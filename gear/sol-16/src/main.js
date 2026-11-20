@@ -4,6 +4,7 @@ import { initAudio } from './audio/engine.js';
 import { togglePlayback } from './audio/scheduler.js';
 import { initLcdDisplay } from './lcd/display.js';
 import { mountAppView } from './ui/appView.js';
+import { PIANO_KEY_MAP } from './ui/piano.js';
 
 function boot() {
   loadState();
@@ -42,6 +43,20 @@ function boot() {
       return;
     }
 
+    if (k === 'p') {
+      view.togglePianoMode();
+      return;
+    }
+
+    if (state.viewMode === 'KEYS') {
+      if (k === '[') { view.piano.shiftOctave(-1); return; }
+      if (k === ']') { view.piano.shiftOctave(1); return; }
+      if (k in PIANO_KEY_MAP) {
+        view.piano.triggerKeyboardSemi(PIANO_KEY_MAP[k]);
+        return;
+      }
+    }
+
     if (k === 'g') {
       view.generateCurrentTrack();
       return;
@@ -74,6 +89,9 @@ function boot() {
 
   window.addEventListener('keyup', (e) => {
     const k = e.key.toLowerCase();
+    if (state.viewMode === 'KEYS' && k in PIANO_KEY_MAP) {
+      view.piano.releaseKeyboardSemi(PIANO_KEY_MAP[k]);
+    }
     if (fxKeyMap[k]) {
       view.setFxState(fxKeyMap[k], false);
     }

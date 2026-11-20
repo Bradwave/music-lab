@@ -201,16 +201,29 @@ export function initAudio() {
     comp.release.value = ch.id === 'bd' || ch.id === 'pr' ? 0.07 : 0.12;
 
     const makeup = audioCtx.createGain();
+    const volGain = audioCtx.createGain();
+    const panner = typeof audioCtx.createStereoPanner === 'function'
+      ? audioCtx.createStereoPanner()
+      : null;
 
     input.connect(preGain);
     preGain.connect(shaper);
     shaper.connect(postLp);
     postLp.connect(comp);
     comp.connect(makeup);
-    makeup.connect(ch.id === 'bd' || ch.id === 'pr' ? drumBus : duckBus);
+    makeup.connect(volGain);
 
-    trackStrips[ch.id] = { input, preGain, shaper, postLp, comp, makeup };
+    const dest = ch.id === 'bd' || ch.id === 'pr' ? drumBus : duckBus;
+    if (panner) {
+      volGain.connect(panner);
+      panner.connect(dest);
+    } else {
+      volGain.connect(dest);
+    }
+
+    trackStrips[ch.id] = { input, preGain, shaper, postLp, comp, makeup, volGain, panner };
     updateTrackDrive(ch.id);
+    updateTrackMix(ch.id);
   });
 
   masterFilter.connect(tapeSat);
@@ -264,6 +277,24 @@ export function updateAllTrackDrives() {
   CHANNELS.forEach(ch => updateTrackDrive(ch.id));
 }
 
+export function updateTrackMix(chId) {
+  if (!audioCtx || !trackStrips[chId]) return;
+  const now = audioCtx.currentTime;
+  const p = state.trackParams[chId] || {};
+  const vol = Math.max(0, Math.min(1, p.vol ?? 0.85));
+  const pan = Math.max(-1, Math.min(1, p.pan ?? 0));
+  const strip = trackStrips[chId];
+  // Musical exponential volume taper so low levels feel smooth and granular
+  strip.volGain.gain.setTargetAtTime(vol * vol * 1.32, now, 0.02);
+  if (strip.panner) {
+    strip.panner.pan.setTargetAtTime(pan, now, 0.02);
+  }
+}
+
+export function updateAllTrackMix() {
+  CHANNELS.forEach(ch => updateTrackMix(ch.id));
+}
+
 export function getAudioNodes() {
   return {
     audioCtx,
@@ -279,7 +310,8 @@ export function getAudioNodes() {
 
 export function updateVinylAudio() {
   if (!audioCtx || !vinylGain) return;
-  vinylGain.gain.setTargetAtTime(state.vinylOn ? 0.18 : 0.0, audioCtx.currentTime, 0.06);
+  const lvl = Math.max(0, Math.min(1, (state.vinylLevel ?? 32) / 100));
+  vinylGain.gain.setTargetAtTime(state.vinylOn ? lvl * 0.48 : 0.0, audioCtx.currentTime, 0.05);
 }
 
 export function updateFxAudioParams() {
@@ -309,11 +341,12 @@ export function updateFxAudioParams() {
     : makeOverdriveCurve(compNorm * 0.58);
 
   // Master bus glue compressor (compresses EVERYTHING including Kick & Perc!)
+  const masterLvl = Math.max(0, Math.min(1, (state.masterVol ?? 88) / 100));
   masterComp.threshold.setTargetAtTime(-6 - compNorm * 34, now, 0.03);
   masterComp.ratio.setTargetAtTime(1.8 + Math.pow(compNorm, 1.2) * 14.2, now, 0.03);
   masterComp.knee.setTargetAtTime(14 - compNorm * 11, now, 0.03);
   masterComp.release.setTargetAtTime(0.18 - compNorm * 0.1, now, 0.03);
-  masterGain.gain.setTargetAtTime(0.84 + compNorm * 0.55, now, 0.03);
+  masterGain.gain.setTargetAtTime((0.88 + compNorm * 0.56) * masterLvl * masterLvl * 1.15, now, 0.03);
 }
 
 export function triggerSidechain(time, intensity = 0.85) {
