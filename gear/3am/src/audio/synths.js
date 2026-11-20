@@ -2,11 +2,18 @@
 // Zero external samples — 100% Web Audio API synthesis.
 
 import { state } from '../state/store.js';
-import { getMood, getSubMidi, midiToFreq } from '../state/scales.js';
+import { getHour, getChordData, getSubMidi, midiToFreq } from '../state/scales.js';
 import { initAudio, getAudioNodes, getLaneInput, triggerSidechain } from './engine.js';
 
+function tapePitch() {
+  if (!state.fx.FLUT) return 1.0;
+  // Subtle tape slowdown + cassette warble flutter
+  const wobble = Math.sin(performance.now() * 0.028) * 0.035;
+  return 0.84 + wobble;
+}
+
 function driftFactor(amount = 0.03) {
-  return 1 + (Math.random() * 2 - 1) * amount * (0.2 + state.drift * 0.8);
+  return (1 + (Math.random() * 2 - 1) * amount * (0.2 + state.drift * 0.8)) * tapePitch();
 }
 
 // ============================================================================
@@ -18,22 +25,23 @@ export function playSub(time, val, opts = {}) {
   const isGhost = Boolean(opts.isGhost);
   const vel = (opts.vel ?? 1.0) * (isGhost ? 0.58 : 1.0);
   const depth = state.depth;
+  const t = getHour(state.hourId).tone;
 
   // val 0 = main analog house kick, val 1 = soft muted thump
   if (val <= 1) {
     const isSoft = val === 1 || isGhost;
-    const baseFreq = isSoft ? 49 : 46;
-    const dur = isSoft ? 0.14 : (0.20 + depth * 0.14);
+    const baseFreq = (isSoft ? 49 : (t.subWeight > 1.1 ? 43 : 46)) * tapePitch();
+    const dur = (isSoft ? 0.14 : (0.20 + depth * 0.14)) * t.subWeight;
 
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(baseFreq * (isSoft ? 2.1 : 3.2), time);
+    osc.frequency.setValueAtTime(baseFreq * (isSoft ? 2.1 : 3.1 * t.kickPunch), time);
     osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.12, time + 0.038);
     osc.frequency.exponentialRampToValueAtTime(baseFreq, time + dur);
 
     gain.gain.setValueAtTime(0.001, time);
-    gain.gain.linearRampToValueAtTime(vel * (isSoft ? 0.62 : 1.02), time + 0.003);
+    gain.gain.linearRampToValueAtTime(vel * (isSoft ? 0.62 : 1.02 * Math.min(1.08, t.subWeight)), time + 0.003);
     gain.gain.exponentialRampToValueAtTime(0.001, time + dur);
 
     osc.connect(gain);
@@ -46,9 +54,9 @@ export function playSub(time, val, opts = {}) {
       const clickOsc = audioCtx.createOscillator();
       const clickGain = audioCtx.createGain();
       clickOsc.type = 'triangle';
-      clickOsc.frequency.setValueAtTime(280 * driftFactor(0.04), time);
+      clickOsc.frequency.setValueAtTime(280 * t.kickPunch * driftFactor(0.04), time);
       clickOsc.frequency.exponentialRampToValueAtTime(84, time + 0.017);
-      clickGain.gain.setValueAtTime(vel * 0.26, time);
+      clickGain.gain.setValueAtTime(vel * 0.25 * t.kickPunch, time);
       clickGain.gain.exponentialRampToValueAtTime(0.001, time + 0.019);
       clickOsc.connect(clickGain);
       clickGain.connect(dest);
@@ -57,7 +65,6 @@ export function playSub(time, val, opts = {}) {
 
       triggerSidechain(time, vel);
 
-      // Visual kick pulse
       const delayMs = Math.max(0, (time - audioCtx.currentTime) * 1000);
       setTimeout(() => {
         state.kickPulse = Math.max(state.kickPulse, vel);
@@ -66,7 +73,7 @@ export function playSub(time, val, opts = {}) {
 
     if (depth > 0.45 && !isSoft) {
       const revTap = audioCtx.createGain();
-      revTap.gain.value = (depth - 0.45) * 0.14;
+      revTap.gain.value = (depth - 0.45) * 0.14 * t.reverbScale;
       gain.connect(revTap);
       revTap.connect(reverbSend);
     }
@@ -74,9 +81,9 @@ export function playSub(time, val, opts = {}) {
   }
 
   // val 2..7 = Warm rounded deep-house sub-bass note
-  const midi = getSubMidi(val, state.moodId);
+  const midi = getSubMidi(val, state.keyId, state.hourId);
   const freq = midiToFreq(midi) * driftFactor(0.005);
-  const dur = isGhost ? 0.14 : (0.24 + depth * 0.16);
+  const dur = (isGhost ? 0.14 : (0.24 + depth * 0.16)) * t.subWeight;
 
   const subOsc = audioCtx.createOscillator();
   const bodyOsc = audioCtx.createOscillator();
@@ -321,27 +328,26 @@ export function playChd(time, val, opts = {}) {
   const isGhost = Boolean(opts.isGhost);
   const vel = (opts.vel ?? 1.0) * (isGhost ? 0.44 : 0.88);
   const depth = state.depth;
-  const mood = getMood(state.moodId);
-  const chord = mood.chords[((Math.round(val) % mood.chords.length) + mood.chords.length) % mood.chords.length];
+  const hour = getHour(state.hourId);
+  const t = hour.tone;
+  const chord = getChordData(val, state.keyId, state.hourId);
 
-  // Tight dub stab at low depth, lush blooming chord at high depth
-  const dur = isGhost
-    ? (0.14 + depth * 0.18)
-    : (0.24 + depth * 0.56);
+  // Tight dub stab at low depth, lush blooming chord at high depth, shaped by Night-Arc hour
+  const dur = (isGhost ? (0.14 + depth * 0.18) : (0.24 + depth * 0.56)) * t.chordDecay;
 
   const chordBus = audioCtx.createGain();
   const filt = audioCtx.createBiquadFilter();
   filt.type = 'lowpass';
-  filt.Q.value = 2.2 + depth * 2.4;
+  filt.Q.value = (2.2 + depth * 2.4) * (t.chordBright < 0.8 ? 1.25 : 0.92);
 
-  const peakCut = isGhost
+  const peakCut = (isGhost
     ? (720 + (1 - depth) * 700)
-    : (1150 + (1 - depth) * 1850) * driftFactor(0.08);
-  const restCut = 240 + (1 - depth) * 240;
+    : (1150 + (1 - depth) * 1850) * driftFactor(0.08)) * t.chordBright;
+  const restCut = (240 + (1 - depth) * 240) * t.chordBright;
 
-  filt.frequency.setValueAtTime(restCut * 0.8, time);
-  filt.frequency.linearRampToValueAtTime(peakCut, time + 0.012);
-  filt.frequency.exponentialRampToValueAtTime(Math.max(180, restCut), time + dur * 0.9);
+  filt.frequency.setValueAtTime(Math.max(150, restCut * 0.8), time);
+  filt.frequency.linearRampToValueAtTime(Math.max(240, Math.min(12000, peakCut)), time + 0.012);
+  filt.frequency.exponentialRampToValueAtTime(Math.max(150, restCut), time + dur * 0.9);
 
   const env = audioCtx.createGain();
   env.gain.setValueAtTime(0.001, time);
@@ -354,37 +360,37 @@ export function playChd(time, val, opts = {}) {
 
   // Extra reverb & dub send for ghost whispers or high depth
   const revTap = audioCtx.createGain();
-  revTap.gain.value = isGhost ? 0.55 : (0.24 + depth * 0.46);
+  revTap.gain.value = (isGhost ? 0.55 : (0.24 + depth * 0.46)) * t.reverbScale;
   env.connect(revTap);
   revTap.connect(reverbSend);
 
-  if (isGhost || depth > 0.35) {
+  if (isGhost || depth > 0.35 || t.dubFbBoost > 0.05) {
     const dubTap = audioCtx.createGain();
-    dubTap.gain.value = isGhost ? 0.48 : (depth * 0.36);
+    dubTap.gain.value = isGhost ? 0.48 : (depth * 0.36 + Math.max(0, t.dubFbBoost));
     env.connect(dubTap);
     dubTap.connect(dubSend);
   }
 
-  // Synthesize each note in the parallel chord with warm detune & subtle Rhodes tine
-  chord.intervals.forEach((semi, idx) => {
-    const freq = midiToFreq(mood.chordRoot + semi);
+  // Synthesize each note in the parallel chord with hour-sculpted waveform & Rhodes bell tine
+  chord.midis.forEach((midi, idx) => {
+    const freq = midiToFreq(midi) * tapePitch();
     const detuneCents = (idx - 2) * 3.8 + (Math.random() - 0.5) * 6 * state.drift;
 
     const oscA = audioCtx.createOscillator();
-    oscA.type = idx === 0 ? 'triangle' : 'sawtooth';
+    oscA.type = idx === 0 ? 'triangle' : t.chordWave;
     oscA.frequency.setValueAtTime(freq, time);
     oscA.detune.setValueAtTime(detuneCents, time);
 
     const oscB = audioCtx.createOscillator();
     oscB.type = 'sine';
-    oscB.frequency.setValueAtTime(freq * 2, time); // warm Rhodes upper partial
+    oscB.frequency.setValueAtTime(freq * (t.octaveLift && idx === chord.midis.length - 1 ? 4 : 2), time);
 
     const voiceGain = audioCtx.createGain();
-    voiceGain.gain.value = (idx === 0 ? 0.32 : 0.22) / Math.sqrt(chord.intervals.length);
+    voiceGain.gain.value = (idx === 0 ? 0.32 : 0.22) / Math.sqrt(chord.midis.length);
 
     const tineGain = audioCtx.createGain();
-    tineGain.gain.setValueAtTime(isGhost ? 0.04 : 0.14, time);
-    tineGain.gain.exponentialRampToValueAtTime(0.001, time + 0.09);
+    tineGain.gain.setValueAtTime((isGhost ? 0.04 : 0.13) * t.tineGain, time);
+    tineGain.gain.exponentialRampToValueAtTime(0.001, time + 0.11);
 
     oscA.connect(voiceGain);
     oscB.connect(tineGain);

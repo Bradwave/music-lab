@@ -4,7 +4,7 @@
 
 import { state, refreshGhostMaps, setAnchor, showStatus, notify } from '../state/store.js';
 import { LANES, getValueLabel } from '../state/scales.js';
-import { initAudio, getAudioNodes, updateAudioParams } from './engine.js';
+import { initAudio, getAudioNodes, updateAudioParams, triggerSliceGate, resetMasterGate } from './engine.js';
 import { triggerLaneVoice, auditionLane } from './synths.js';
 
 let timerId = null;
@@ -16,7 +16,11 @@ const SCHEDULE_AHEAD_SEC = 0.11;
 
 function scheduleTick(tick, time) {
   const { audioCtx } = getAudioNodes();
-  stepDurationSec = 60 / state.bpm / 4;
+  stepDurationSec = (60 / state.bpm / 4) * (state.fx.FLUT ? 1.18 : 1.0);
+
+  if (state.fx.SLICE) {
+    triggerSliceGate(time, stepDurationSec);
+  }
 
   // Asymmetric house swing on odd 16th-note subdivisions
   const isOffSixteenth = tick % 2 === 1;
@@ -93,7 +97,7 @@ function schedulerLoop() {
 
   while (nextNoteTime < audioCtx.currentTime + SCHEDULE_AHEAD_SEC) {
     scheduleTick(state.globalTick, nextNoteTime);
-    stepDurationSec = 60 / state.bpm / 4;
+    stepDurationSec = (60 / state.bpm / 4) * (state.fx.FLUT ? 1.18 : 1.0);
     nextNoteTime += stepDurationSec;
     state.globalTick++;
   }
@@ -127,6 +131,11 @@ export function stopPlayback() {
     state.laneStep[l.id] = -1;
     state.laneDubThrow[l.id] = false;
   }
+  state.fx.WASH = false;
+  state.fx.SUBM = false;
+  state.fx.FLUT = false;
+  state.fx.SLICE = false;
+  resetMasterGate();
   updateAudioParams(0);
   showStatus('STOPPED');
   notify('transport');
@@ -169,6 +178,6 @@ export function tapAnchorOnLane(laneId) {
   if (state.isPlaying && state.isTapRec) {
     const step = state.laneStep[laneId] >= 0 ? state.laneStep[laneId] : 0;
     setAnchor(laneId, step, { val, accent: true });
-    showStatus(`TAP ${laneId.toUpperCase()} @${step + 1} ${getValueLabel(laneId, val, state.moodId)}`);
+    showStatus(`TAP ${laneId.toUpperCase()} @${step + 1} ${getValueLabel(laneId, val, state.keyId, state.hourId)}`);
   }
 }

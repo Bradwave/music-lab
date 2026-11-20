@@ -1,10 +1,10 @@
 // Reactive state store for 3AM (Berlin 3 AM 4-Track Tape Loom).
 
-import { LANES, MOODS } from './scales.js';
+import { LANES, KEYS, HOURS, getKey, getHour } from './scales.js';
 import { REEL_PRESETS } from './presets.js';
 import { computeGhostMap, generateLaneSkeleton } from '../engine/anchorEcho.js';
 
-const STORAGE_KEY = '3am_state_v1';
+const STORAGE_KEY = '3am_state_v2';
 
 function clonePreset(preset) {
   return JSON.parse(JSON.stringify(preset));
@@ -16,13 +16,14 @@ function createInitialState() {
     reelIndex: 0,
     reelName: p.name,
     bpm: p.bpm,
-    moodId: p.moodId,
+    keyId: p.keyId,
+    hourId: p.hourId,
     micro: p.micro,
     depth: p.depth,
     drift: p.drift,
     lanes: p.lanes,
 
-    // Live runtime flags (not persisted)
+    // Live runtime flags
     isPlaying: false,
     isTapRec: false,
     isWavRecording: false,
@@ -36,6 +37,7 @@ function createInitialState() {
     laneFlashType: { sub: 'anchor', cut: 'anchor', chd: 'anchor', air: 'anchor' },
     laneDubThrow: { sub: false, cut: false, chd: false, air: false },
     laneLastGhostHit: { sub: -1, cut: -1, chd: -1, air: -1 },
+    fx: { WASH: false, SUBM: false, FLUT: false, SLICE: false },
     kickPulse: 0,
 
     // Cached deterministic ghost maps
@@ -84,7 +86,8 @@ export function saveToLocalStorage() {
       reelIndex: state.reelIndex,
       reelName: state.reelName,
       bpm: state.bpm,
-      moodId: state.moodId,
+      keyId: state.keyId,
+      hourId: state.hourId,
       micro: state.micro,
       depth: state.depth,
       drift: state.drift,
@@ -92,7 +95,7 @@ export function saveToLocalStorage() {
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   } catch {
-    // Ignore quota/private-mode storage errors
+    // Ignore storage errors
   }
 }
 
@@ -106,7 +109,8 @@ export function loadFromLocalStorage() {
     state.reelIndex = typeof data.reelIndex === 'number' ? data.reelIndex : 0;
     state.reelName = data.reelName || 'CUSTOM';
     state.bpm = clamp(data.bpm ?? 122, 112, 132);
-    state.moodId = MOODS.some(m => m.id === data.moodId) ? data.moodId : 'fdor';
+    state.keyId = KEYS.some(k => k.id === data.keyId) ? data.keyId : 'f';
+    state.hourId = HOURS.some(h => h.id === data.hourId) ? data.hourId : '03';
     state.micro = clamp(data.micro ?? 0.42, 0, 1);
     state.depth = clamp(data.depth ?? 0.46, 0, 1);
     state.drift = clamp(data.drift ?? 0.34, 0, 1);
@@ -140,7 +144,8 @@ export function loadReelPreset(index) {
   state.reelIndex = index % REEL_PRESETS.length;
   state.reelName = copy.name;
   state.bpm = copy.bpm;
-  state.moodId = copy.moodId;
+  state.keyId = copy.keyId;
+  state.hourId = copy.hourId;
   state.micro = copy.micro;
   state.depth = copy.depth;
   state.drift = copy.drift;
@@ -148,16 +153,25 @@ export function loadReelPreset(index) {
   state.driftCycle = 0;
   refreshGhostMaps();
   saveToLocalStorage();
-  showStatus(`REEL: ${copy.name}`);
+  showStatus(`REEL: ${copy.name} ${copy.hourId}:00`);
   notify('preset');
 }
 
-export function cycleMood() {
-  const idx = MOODS.findIndex(m => m.id === state.moodId);
-  const next = MOODS[(idx + 1) % MOODS.length];
-  state.moodId = next.id;
+export function cycleKey() {
+  const idx = KEYS.findIndex(k => k.id === state.keyId);
+  const next = KEYS[(idx + 1) % KEYS.length];
+  state.keyId = next.id;
   saveToLocalStorage();
-  showStatus(`KEY: ${next.label}`);
+  showStatus(`ROOT ${next.label}`);
+  notify('mood');
+}
+
+export function setHour(hourId) {
+  if (!HOURS.some(h => h.id === hourId)) return;
+  state.hourId = hourId;
+  const h = getHour(hourId);
+  saveToLocalStorage();
+  showStatus(`${h.label} ${h.tag}`);
   notify('mood');
 }
 
@@ -246,10 +260,11 @@ export function clearSingleLane(laneId) {
 export function exportReelJson() {
   const data = {
     format: '3am-reel',
-    version: 1,
+    version: 2,
     reelName: state.reelName,
     bpm: state.bpm,
-    moodId: state.moodId,
+    keyId: state.keyId,
+    hourId: state.hourId,
     micro: state.micro,
     depth: state.depth,
     drift: state.drift,
@@ -259,7 +274,7 @@ export function exportReelJson() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `3AM_${state.reelName.toLowerCase()}_${state.bpm}bpm.json`;
+  a.download = `3AM_${state.reelName.toLowerCase()}_${state.hourId}h_${getKey(state.keyId).short}_${state.bpm}bpm.json`;
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -276,7 +291,8 @@ export function importReelJson(text) {
     }
     state.reelName = String(data.reelName || 'IMPORT').slice(0, 8).toUpperCase();
     state.bpm = clamp(data.bpm ?? 122, 112, 132);
-    state.moodId = MOODS.some(m => m.id === data.moodId) ? data.moodId : 'fdor';
+    state.keyId = KEYS.some(k => k.id === data.keyId) ? data.keyId : 'f';
+    state.hourId = HOURS.some(h => h.id === data.hourId) ? data.hourId : '03';
     state.micro = clamp(data.micro ?? 0.4, 0, 1);
     state.depth = clamp(data.depth ?? 0.45, 0, 1);
     state.drift = clamp(data.drift ?? 0.3, 0, 1);
@@ -309,5 +325,4 @@ function clamp(v, min, max) {
   return Math.max(min, Math.min(max, v));
 }
 
-// Initialize ghost maps on boot
 refreshGhostMaps();

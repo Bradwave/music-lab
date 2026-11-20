@@ -2,10 +2,12 @@
 // stereo dotted-8th dub tape delay, dark club plate reverb, and master tape glue.
 
 import { state } from '../state/store.js';
-import { LANES } from '../state/scales.js';
+import { LANES, getHour } from '../state/scales.js';
 
 let audioCtx = null;
 let masterGain = null;
+let masterFilter = null;
+let masterGate = null;
 let masterComp = null;
 let tapeSat = null;
 let analyser = null;
@@ -32,6 +34,7 @@ let reverbReturn = null;
 let noiseBuffer = null;
 let tapeFloorSource = null;
 let tapeFloorGain = null;
+let lastSatHourId = null;
 
 function makeSoftTapeCurve(amount = 4.5) {
   const n = 2048;
@@ -117,6 +120,14 @@ export function initAudio() {
   masterComp.attack.value = 0.008;
   masterComp.release.value = 0.16;
 
+  masterFilter = audioCtx.createBiquadFilter();
+  masterFilter.type = 'lowpass';
+  masterFilter.frequency.value = 18000;
+  masterFilter.Q.value = 0.8;
+
+  masterGate = audioCtx.createGain();
+  masterGate.gain.value = 1.0;
+
   masterGain = audioCtx.createGain();
   masterGain.gain.value = 0.88;
 
@@ -128,7 +139,9 @@ export function initAudio() {
   duckBus.connect(sidechainGain);
   sidechainGain.connect(tapeSat);
 
-  tapeSat.connect(masterComp);
+  tapeSat.connect(masterFilter);
+  masterFilter.connect(masterGate);
+  masterGate.connect(masterComp);
   masterComp.connect(masterGain);
   masterGain.connect(analyser);
   analyser.connect(audioCtx.destination);
@@ -251,6 +264,14 @@ export function updateAudioParams(phaseMod = 0) {
   const now = audioCtx.currentTime;
   const depth = state.depth;
   const drift = state.drift;
+  const hour = getHour(state.hourId);
+  const t = hour.tone;
+
+  // Update master tape saturation warmth when Night-Arc Hour shifts
+  if (lastSatHourId !== state.hourId) {
+    tapeSat.curve = makeSoftTapeCurve(t.satDrive);
+    lastSatHourId = state.hourId;
+  }
 
   // Tempo-synced dotted-8th (L) & 3/8-ish (R) dub echo times
   const stepSec = 60 / state.bpm / 4;
@@ -259,20 +280,32 @@ export function updateAudioParams(phaseMod = 0) {
   dubDelayL.delayTime.setTargetAtTime(delayLTime, now, 0.04);
   dubDelayR.delayTime.setTargetAtTime(delayRTime, now, 0.04);
 
-  // Any active dub throw pushes feedback up dramatically for swirling tails
+  // Any active dub throw or WASH FX pushes feedback up dramatically for swirling tails
   const anyThrow = Object.values(state.laneDubThrow).some(Boolean);
-  const fb = anyThrow
-    ? Math.min(0.76, 0.56 + depth * 0.2)
-    : Math.min(0.64, 0.20 + depth * 0.42);
+  const washOn = Boolean(state.fx.WASH);
+  const baseFb = Math.max(0.12, Math.min(0.72, 0.20 + depth * 0.42 + t.dubFbBoost));
+  const fb = washOn
+    ? 0.82
+    : anyThrow
+      ? Math.min(0.78, Math.max(0.58, baseFb + 0.2))
+      : baseFb;
   dubFeedbackL.gain.setTargetAtTime(fb, now, 0.03);
-  dubFeedbackR.gain.setTargetAtTime(fb * 0.88, now, 0.03);
+  dubFeedbackR.gain.setTargetAtTime(fb * 0.90, now, 0.03);
 
-  dubFilter.frequency.setTargetAtTime(950 + (1 - depth) * 1450, now, 0.05);
-  dubReturn.gain.setTargetAtTime(0.28 + depth * 0.52 + (anyThrow ? 0.2 : 0), now, 0.04);
-  reverbReturn.gain.setTargetAtTime(0.16 + depth * 0.42, now, 0.05);
+  const dubCut = washOn ? 1850 : Math.max(420, (950 + (1 - depth) * 1450) * t.dubDark);
+  dubFilter.frequency.setTargetAtTime(dubCut, now, 0.04);
+  dubReturn.gain.setTargetAtTime(0.28 + depth * 0.52 + (anyThrow ? 0.2 : 0) + (washOn ? 0.34 : 0), now, 0.03);
+  reverbReturn.gain.setTargetAtTime((0.16 + depth * 0.42 + (washOn ? 0.28 : 0)) * t.reverbScale, now, 0.04);
+
+  // Master Submerge (SUBM) resonant underwater club filter
+  if (masterFilter) {
+    const submOn = Boolean(state.fx.SUBM);
+    masterFilter.frequency.setTargetAtTime(submOn ? 340 : 18500, now, submOn ? 0.055 : 0.04);
+    masterFilter.Q.setTargetAtTime(submOn ? 4.2 : 0.75, now, 0.04);
+  }
 
   // Tape hiss floor only breathes softly while playing
-  const hissTarget = state.isPlaying ? (0.04 + depth * 0.14) : 0;
+  const hissTarget = state.isPlaying ? (0.04 + depth * 0.14 + (state.fx.FLUT ? 0.14 : 0)) : 0;
   tapeFloorGain.gain.setTargetAtTime(hissTarget, now, 0.08);
 
   // Per-lane head pressure (filter cutoff + level) & dub throw taps
@@ -292,25 +325,45 @@ export function updateAudioParams(phaseMod = 0) {
 
     let cutoff = 16000;
     if (id === 'sub') {
-      cutoff = 140 + Math.pow(effP, 1.8) * 1600;
+      cutoff = (140 + Math.pow(effP, 1.8) * 1600) * (t.subWeight > 1.1 ? 0.82 : 1.0);
     } else if (id === 'cut') {
-      cutoff = 420 + Math.pow(effP, 1.9) * 11500;
+      cutoff = (420 + Math.pow(effP, 1.9) * 11500) * Math.min(1.25, t.airBright);
     } else if (id === 'chd') {
-      // Depth darkens chords subtly toward Berlin dub territory while pressure opens them
-      cutoff = 260 + Math.pow(effP, 2.0) * (5400 - depth * 2200);
+      cutoff = (260 + Math.pow(effP, 2.0) * (5400 - depth * 2200)) * t.chordBright;
     } else if (id === 'air') {
-      cutoff = 1100 + Math.pow(effP, 1.6) * 14500;
+      cutoff = (1100 + Math.pow(effP, 1.6) * 14500) * t.airBright;
     }
 
-    strip.filter.frequency.setTargetAtTime(Math.max(120, cutoff), now, 0.035);
+    strip.filter.frequency.setTargetAtTime(Math.max(120, Math.min(18000, cutoff)), now, 0.035);
     const targetLevel = isMuted ? 0 : (0.18 + Math.pow(p, 0.85) * 0.82);
     strip.level.gain.setTargetAtTime(targetLevel, now, 0.015);
 
-    // Live dub throw floods that single lane straight into stereo tape echo
+    // Live dub throw or WASH floods into stereo tape echo
     const baseDub = id === 'chd' ? (0.18 + depth * 0.44) : id === 'cut' ? (depth * 0.20) : (depth * 0.08);
-    const dubAmt = isMuted ? 0 : (throwOn ? 0.92 : baseDub);
+    const dubAmt = isMuted ? 0 : (throwOn || (washOn && id !== 'sub') ? 0.92 : baseDub);
     strip.dubTap.gain.setTargetAtTime(dubAmt, now, 0.02);
   }
+}
+
+export function triggerSliceGate(time, stepSec) {
+  if (!masterGate || !audioCtx) return;
+  const g = masterGate.gain;
+  g.cancelScheduledValues(time);
+  // Crisp rhythmic microhouse 32nd-note chopper
+  const half = stepSec * 0.5;
+  g.setValueAtTime(1.0, time);
+  g.linearRampToValueAtTime(0.08, time + half * 0.42);
+  g.setValueAtTime(0.08, time + half * 0.85);
+  g.linearRampToValueAtTime(1.0, time + half);
+  g.linearRampToValueAtTime(0.14, time + stepSec * 0.82);
+  g.linearRampToValueAtTime(1.0, time + stepSec);
+}
+
+export function resetMasterGate() {
+  if (!masterGate || !audioCtx) return;
+  const now = audioCtx.currentTime;
+  masterGate.gain.cancelScheduledValues(now);
+  masterGate.gain.setTargetAtTime(1.0, now, 0.015);
 }
 
 export function triggerSidechain(time, strength = 1.0) {

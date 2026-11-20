@@ -1,12 +1,13 @@
 // Minimal hardware faceplate controller for 3AM.
-// Wires 4 reel pills, transport, mood cycle, 4 always-visible pixel knobs,
-// 4 live Dub-Throw / Tap-In pads + per-lane SEED pills, menu drawer & keyboard shortcuts.
+// Wires 4 reels, Night-Arc mood hours (01:00–07:00), transport + root key,
+// 4 always-visible pixel knobs, 4 lane pads, 4 master punch-in FX pads, menu & keyboard shortcuts.
 
 import {
   state,
   subscribe,
   loadReelPreset,
-  cycleMood,
+  cycleKey,
+  setHour,
   toggleMute,
   seedSingleLane,
   clearSingleLane,
@@ -16,8 +17,8 @@ import {
   importReelJson,
   showStatus
 } from '../state/store.js';
-import { LANES, getMood } from '../state/scales.js';
-import { initAudio, updateAudioParams } from '../audio/engine.js';
+import { LANES, HOURS, getKey } from '../state/scales.js';
+import { initAudio, updateAudioParams, resetMasterGate } from '../audio/engine.js';
 import { togglePlayback, tapAnchorOnLane } from '../audio/scheduler.js';
 import { toggleWavRecording } from '../audio/wavRecorder.js';
 import { createPixelKnob } from './knob.js';
@@ -29,15 +30,19 @@ export function initAppView() {
 
   // Elements
   const reelBtns = Array.from(document.querySelectorAll('.reel-btn'));
+  const hourBtns = Array.from(document.querySelectorAll('.hour-btn'));
+  const fxBtns = Array.from(document.querySelectorAll('.fx-btn'));
+
   const btnPlay = document.getElementById('btnPlay');
   const txtPlay = document.getElementById('txtPlay');
   const ledPlay = document.getElementById('ledPlay');
   const btnTap = document.getElementById('btnTap');
   const ledTap = document.getElementById('ledTap');
-  const btnMood = document.getElementById('btnMood');
+  const btnKey = document.getElementById('btnKey');
 
   const padRow = document.getElementById('padRow');
   const padHint = document.getElementById('padHint');
+  const fxStatus = document.getElementById('fxStatus');
 
   const btnMenu = document.getElementById('btnMenu');
   const btnGuide = document.getElementById('btnGuide');
@@ -53,7 +58,7 @@ export function initAppView() {
   const fileJsonInput = document.getElementById('fileJsonInput');
   const btnResetReel = document.getElementById('btnResetReel');
 
-  // 4 Always-Visible Pixel Rotary Knobs (Amber = Procedural/Dub, Mint = Groove/Tempo)
+  // 4 Always-Visible Pixel Rotary Knobs
   const knobMicro = createPixelKnob(document.getElementById('knobMicro'), {
     label: 'MICRO',
     min: 0,
@@ -122,7 +127,7 @@ export function initAppView() {
     }
   });
 
-  // Render 4 Bottom Lane Performance Pads + Tiny SEED / CLR Micro-Strip
+  // Render 4 Lane Performance Pads + Per-Lane SEED / CLR
   const padEls = {};
   padRow.innerHTML = '';
   for (const laneDef of LANES) {
@@ -151,9 +156,7 @@ export function initAppView() {
         state.laneDubThrow[laneDef.id] = true;
         updateAudioParams();
         showStatus(`DUB THROW: ${laneDef.name}`, 900);
-        if (!state.isPlaying) {
-          tapAnchorOnLane(laneDef.id);
-        }
+        if (!state.isPlaying) tapAnchorOnLane(laneDef.id);
       }
     };
 
@@ -192,40 +195,92 @@ export function initAppView() {
 
     actions.appendChild(btnSeed);
     actions.appendChild(btnClr);
-
     col.appendChild(pad);
     col.appendChild(actions);
     padRow.appendChild(col);
     padEls[laneDef.id] = pad;
   }
 
-  // Reel Preset Pills
-  reelBtns.forEach((btn) => {
+  // Master Punch-In Tape FX Pads (Hold to Perform — Multi-touch Safe)
+  const fxElMap = {};
+  function setFxState(fxId, active) {
+    if (!(fxId in state.fx)) return;
+    if (state.fx[fxId] === active) return;
+    if (active) initAudio();
+    state.fx[fxId] = active;
+    if (fxId === 'SLICE' && !active) {
+      resetMasterGate();
+    }
+    updateAudioParams();
+    syncFxUi();
+  }
+
+  fxBtns.forEach((btn) => {
+    const fxId = btn.dataset.fx;
+    fxElMap[fxId] = btn;
+
+    const down = (e) => {
+      e.preventDefault();
+      btn.setPointerCapture?.(e.pointerId);
+      setFxState(fxId, true);
+    };
+    const up = (e) => {
+      if (btn.hasPointerCapture?.(e.pointerId)) {
+        btn.releasePointerCapture(e.pointerId);
+      }
+      setFxState(fxId, false);
+    };
+
+    btn.addEventListener('pointerdown', down);
+    btn.addEventListener('pointerup', up);
+    btn.addEventListener('pointercancel', up);
+    btn.addEventListener('lostpointercapture', () => setFxState(fxId, false));
+  });
+
+  function syncFxUi() {
+    const activeList = Object.keys(state.fx).filter(k => state.fx[k]);
+    fxBtns.forEach((btn) => {
+      const on = Boolean(state.fx[btn.dataset.fx]);
+      btn.classList.toggle('active-amber', on);
+      btn.classList.toggle('pressed', on);
+    });
+    if (fxStatus) {
+      fxStatus.textContent = activeList.length ? activeList.join(' + ') : 'HOLD TO PERFORM';
+      fxStatus.classList.toggle('is-active', activeList.length > 0);
+    }
+  }
+
+  // Night-Arc Mood Hours (01:00 · 03:00 · 05:00 · 07:00)
+  hourBtns.forEach((btn) => {
     btn.addEventListener('click', () => {
-      const idx = Number(btn.dataset.reel);
-      loadReelPreset(idx);
+      initAudio();
+      setHour(btn.dataset.hour);
       updateAudioParams();
     });
   });
 
-  // Transport & Mood
+  // Reel Preset Pills
+  reelBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      loadReelPreset(Number(btn.dataset.reel));
+      updateAudioParams();
+    });
+  });
+
+  // Transport & Root Key
   btnPlay.addEventListener('click', () => togglePlayback());
 
   btnTap.addEventListener('click', () => {
     state.isTapRec = !state.isTapRec;
-    if (state.isTapRec) {
-      showStatus('TAP PADS TO PUNCH ANCHORS', 2200);
-    } else {
-      showStatus('HOLD PADS FOR DUB THROW');
-    }
+    showStatus(state.isTapRec ? 'TAP PADS TO PUNCH ANCHORS' : 'HOLD PADS FOR DUB THROW', 2000);
     syncUi();
   });
 
-  btnMood.addEventListener('click', () => {
-    cycleMood();
+  btnKey.addEventListener('click', () => {
+    cycleKey();
   });
 
-  // Modals / Menu
+  // Modals
   const closeModals = () => {
     menuBackdrop.classList.add('hidden');
     guideBackdrop.classList.add('hidden');
@@ -251,17 +306,9 @@ export function initAppView() {
   });
 
   // Menu Actions
-  btnWav.addEventListener('click', () => {
-    toggleWavRecording();
-  });
-
-  btnSaveJson.addEventListener('click', () => {
-    exportReelJson();
-  });
-
-  btnLoadJson.addEventListener('click', () => {
-    fileJsonInput.click();
-  });
+  btnWav.addEventListener('click', () => toggleWavRecording());
+  btnSaveJson.addEventListener('click', () => exportReelJson());
+  btnLoadJson.addEventListener('click', () => fileJsonInput.click());
 
   fileJsonInput.addEventListener('change', async (e) => {
     const file = e.target.files?.[0];
@@ -282,6 +329,7 @@ export function initAppView() {
 
   // Keyboard Shortcuts
   const keyToLane = { a: 'sub', s: 'cut', d: 'chd', f: 'air' };
+  const keyToFx = { z: 'WASH', x: 'SUBM', c: 'FLUT', v: 'SLICE' };
 
   window.addEventListener('keydown', (e) => {
     if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
@@ -301,13 +349,23 @@ export function initAppView() {
       return;
     }
     if (k === 'k') {
-      cycleMood();
+      cycleKey();
+      return;
+    }
+    if (k === 'h') {
+      const idx = HOURS.findIndex(h => h.id === state.hourId);
+      const next = HOURS[(idx + 1) % HOURS.length];
+      setHour(next.id);
+      updateAudioParams();
       return;
     }
     if (k === '1' || k === '2' || k === '3' || k === '4') {
-      const idx = Number(k) - 1;
-      toggleMute(LANES[idx].id);
+      toggleMute(LANES[Number(k) - 1].id);
       updateAudioParams();
+      return;
+    }
+    if (keyToFx[k]) {
+      setFxState(keyToFx[k], true);
       return;
     }
     if (keyToLane[k]) {
@@ -332,6 +390,10 @@ export function initAppView() {
 
   window.addEventListener('keyup', (e) => {
     const k = e.key.toLowerCase();
+    if (keyToFx[k]) {
+      setFxState(keyToFx[k], false);
+      return;
+    }
     if (keyToLane[k]) {
       const laneId = keyToLane[k];
       padEls[laneId]?.classList.remove('pressed');
@@ -343,7 +405,6 @@ export function initAppView() {
   });
 
   function syncUi(topic = 'all') {
-    // Play & Tap transport
     btnPlay.classList.toggle('active-mint', state.isPlaying);
     ledPlay.classList.toggle('on-mint', state.isPlaying);
     txtPlay.textContent = state.isPlaying ? 'STOP' : 'PLAY';
@@ -351,32 +412,33 @@ export function initAppView() {
     btnTap.classList.toggle('active-amber', state.isTapRec);
     ledTap.classList.toggle('on-amber', state.isTapRec);
 
-    // Mood label
-    btnMood.textContent = getMood(state.moodId).label;
+    btnKey.textContent = getKey(state.keyId).label;
 
-    // Active Reel Pill
     reelBtns.forEach((btn) => {
-      const active = Number(btn.dataset.reel) === state.reelIndex;
-      btn.classList.toggle('active-mint', active);
+      btn.classList.toggle('active-mint', Number(btn.dataset.reel) === state.reelIndex);
     });
 
-    // Pad mode subtitle
+    hourBtns.forEach((btn) => {
+      const isOn = btn.dataset.hour === state.hourId;
+      btn.classList.toggle('active-hour', isOn);
+    });
+
     padHint.textContent = state.isTapRec
       ? 'TAP MODE · HIT PADS OR A S D F TO PUNCH ANCHORS'
-      : 'HOLD PADS OR A S D F FOR LIVE DUB THROW · SEED BELOW';
+      : 'HOLD PADS (A S D F) FOR LANE DUB THROW';
 
     for (const laneDef of LANES) {
       const pad = padEls[laneDef.id];
       if (!pad) continue;
-      const sub = pad.querySelector('.pad-sub');
-      sub.textContent = state.isTapRec ? 'TAP' : 'DUB';
+      pad.querySelector('.pad-sub').textContent = state.isTapRec ? 'TAP' : 'DUB';
       pad.classList.toggle('tap-armed', state.isTapRec);
       pad.classList.toggle('is-muted', state.lanes[laneDef.id].muted);
     }
 
-    // WAV record button
     btnWav.textContent = state.isWavRecording ? 'STOP & SAVE .WAV' : 'REC MASTER .WAV';
     btnWav.classList.toggle('active-amber', state.isWavRecording);
+
+    syncFxUi();
 
     if (topic === 'preset' || topic === 'all') {
       knobMicro.setValue(state.micro);

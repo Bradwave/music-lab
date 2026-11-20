@@ -1,4 +1,4 @@
-// Curated Berlin 3 AM starter reels — immediately hypnotic, polyrhythmic, and deeply editable.
+// Curated Berlin 3 AM starter reels — each paired with a fitting Night-Arc hour & key.
 
 function makeAnchors(pairs) {
   const arr = Array(16).fill(null);
@@ -15,7 +15,8 @@ export const REEL_PRESETS = [
     id: 'perlon',
     name: 'PERLON',
     bpm: 122,
-    moodId: 'fdor',
+    keyId: 'f',
+    hourId: '03',
     micro: 0.42,
     depth: 0.46,
     drift: 0.34,
@@ -61,11 +62,12 @@ export const REEL_PRESETS = [
   {
     id: 'kreuzbg',
     name: 'KREUZBG',
-    bpm: 124,
-    moodId: 'cmin',
-    micro: 0.52,
-    depth: 0.62,
-    drift: 0.42,
+    bpm: 123,
+    keyId: 'c',
+    hourId: '01',
+    micro: 0.48,
+    depth: 0.56,
+    drift: 0.40,
     lanes: {
       sub: {
         length: 16,
@@ -87,16 +89,16 @@ export const REEL_PRESETS = [
       },
       chd: {
         length: 16,
-        pressure: 0.75,
+        pressure: 0.76,
         muted: false,
         seed: 6103,
         anchors: makeAnchors([
-          [3, 0], [11, 1], [14, 4, false]
+          [3, 0], [11, 2], [14, 4, false]
         ])
       },
       air: {
         length: 12,
-        pressure: 0.72,
+        pressure: 0.74,
         muted: false,
         seed: 2917,
         anchors: makeAnchors([
@@ -109,10 +111,11 @@ export const REEL_PRESETS = [
     id: 'tresor',
     name: 'TRESOR',
     bpm: 126,
-    moodId: 'ddor',
-    micro: 0.58,
-    depth: 0.74,
-    drift: 0.48,
+    keyId: 'd',
+    hourId: '05',
+    micro: 0.56,
+    depth: 0.70,
+    drift: 0.46,
     lanes: {
       sub: {
         length: 16,
@@ -138,7 +141,7 @@ export const REEL_PRESETS = [
         muted: false,
         seed: 7741,
         anchors: makeAnchors([
-          [2, 6], [7, 0]
+          [2, 1], [7, 0]
         ])
       },
       air: {
@@ -156,7 +159,8 @@ export const REEL_PRESETS = [
     id: 'blank',
     name: 'BLANK',
     bpm: 120,
-    moodId: 'amin',
+    keyId: 'a',
+    hourId: '03',
     micro: 0.28,
     depth: 0.42,
     drift: 0.24,
