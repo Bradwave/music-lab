@@ -1,51 +1,50 @@
-// Minimal Pixel Piano Keyboard for Pianists (OP-1 / Nanoloop inspired)
-// 15 chromatic keys (C..D+), multi-touch polyphony, scale-guide dots, octave shift,
-// live quantized recording & step-by-step chord capture!
+// Minimal Pixel Hardware Keybed for Pianists (OP-Z / Elektron / Nanoloop inspired)
+// Pure 16-column pixel keycap grid: authentic 2+3 piano spacing in matte charcoal & orange,
+// zero overlapping strips, multi-touch polyphony, scale LED indicators, & chord capture!
 
-import { state, saveState, showLcdMessage, notify } from '../state/store.js';
+import { state, saveState, showLcdMessage } from '../state/store.js';
 import { getMoodPitchClasses, midiToNoteName } from '../state/scales.js';
 import { initAudio } from '../audio/engine.js';
 import { triggerPianoNote } from '../audio/synths.js';
 import { getQuantizedStepIndex } from '../audio/scheduler.js';
 
-// 9 white keys (semitone offsets from C) + 6 black keys with exact percentage positions across 9 white keys
-const WHITE_KEYS = [
-  { semi: 0,  name: 'C', key: 'a' },
-  { semi: 2,  name: 'D', key: 's' },
-  { semi: 4,  name: 'E', key: 'd' },
-  { semi: 5,  name: 'F', key: 'f' },
-  { semi: 7,  name: 'G', key: 'g' },
-  { semi: 9,  name: 'A', key: 'h' },
-  { semi: 11, name: 'B', key: 'j' },
-  { semi: 12, name: 'C', key: 'k' },
-  { semi: 14, name: 'D', key: 'l' }
+// 16-column pixel grid:
+// Top row (sharps/flats) offset by 1 column for dead-accurate 2-group & 3-group piano spacing!
+const SHARP_KEYS = [
+  { semi: 1,  label: 'C#', colStart: 2,  key: 'w' },
+  { semi: 3,  label: 'Eb', colStart: 4,  key: 'e' },
+  { semi: 6,  label: 'F#', colStart: 8,  key: 't' },
+  { semi: 8,  label: 'Ab', colStart: 10, key: 'y' },
+  { semi: 10, label: 'Bb', colStart: 12, key: 'u' }
 ];
 
-const BLACK_KEYS = [
-  { semi: 1,  afterWhite: 0, key: 'w' },
-  { semi: 3,  afterWhite: 1, key: 'e' },
-  { semi: 6,  afterWhite: 3, key: 't' },
-  { semi: 8,  afterWhite: 4, key: 'y' },
-  { semi: 10, afterWhite: 5, key: 'u' },
-  { semi: 13, afterWhite: 7, key: 'o' }
+const NATURAL_KEYS = [
+  { semi: 0,  label: 'C',  colStart: 1,  key: 'a' },
+  { semi: 2,  label: 'D',  colStart: 3,  key: 's' },
+  { semi: 4,  label: 'E',  colStart: 5,  key: 'd' },
+  { semi: 5,  label: 'F',  colStart: 7,  key: 'f' },
+  { semi: 7,  label: 'G',  colStart: 9,  key: 'g' },
+  { semi: 9,  label: 'A',  colStart: 11, key: 'h' },
+  { semi: 11, label: 'B',  colStart: 13, key: 'j' },
+  { semi: 12, label: 'C+', colStart: 15, key: 'k' }
 ];
 
 export const PIANO_KEY_MAP = {};
-WHITE_KEYS.forEach(k => { PIANO_KEY_MAP[k.key] = k.semi; });
-BLACK_KEYS.forEach(k => { PIANO_KEY_MAP[k.key] = k.semi; });
+NATURAL_KEYS.forEach(k => { PIANO_KEY_MAP[k.key] = k.semi; });
+SHARP_KEYS.forEach(k => { PIANO_KEY_MAP[k.key] = k.semi; });
 
 export function createMinimalPiano(container, { onStepWritten }) {
   container.innerHTML = `
     <div class="piano-bar">
       <div class="piano-oct-group">
         <button id="btnOctDown" class="mini-action" title="Octave Down ([)">OCT -</button>
-        <span id="pianoRangeLbl" class="piano-range">C3–D4</span>
+        <span id="pianoRangeLbl" class="piano-range">C3–C4</span>
         <button id="btnOctUp" class="mini-action" title="Octave Up (])">OCT +</button>
       </div>
       <span class="piano-tip">TAP STEP OR REC LIVE</span>
     </div>
     <div class="mini-steps" id="pianoMiniSteps" aria-label="16-Step Strip"></div>
-    <div class="piano-keys" id="pianoKeys" aria-label="Minimal Chromatic Keyboard"></div>
+    <div class="pixel-keybed" id="pianoKeys" aria-label="Minimal Pixel Keybed"></div>
   `;
 
   const btnOctDown = container.querySelector('#btnOctDown');
@@ -54,12 +53,11 @@ export function createMinimalPiano(container, { onStepWritten }) {
   const miniStepsEl = container.querySelector('#pianoMiniSteps');
   const keysEl = container.querySelector('#pianoKeys');
 
-  // Chord-capture grouping buffer (combines notes struck within 75ms on CHORD track!)
   let lastWriteStep = -1;
   let lastWriteTime = 0;
 
   function baseMidi() {
-    return (state.pianoOctave + 1) * 12; // oct 3 => C3 = 48
+    return (state.pianoOctave + 1) * 12;
   }
 
   function recordMidiToStep(targetStep, midiNote) {
@@ -74,7 +72,6 @@ export function createMinimalPiano(container, { onStepWritten }) {
       delete st.midi;
       delete st.notes;
     } else if (chId === 'ch') {
-      // Polyphonic chord capture: combine keys struck together within 85ms
       const isChordBurst = targetStep === lastWriteStep && (now - lastWriteTime) < 95 && st.on;
       if (isChordBurst) {
         const existing = Array.isArray(st.notes)
@@ -111,9 +108,7 @@ export function createMinimalPiano(container, { onStepWritten }) {
   function triggerSemi(semi, keyEl = null) {
     initAudio();
     const midi = baseMidi() + semi;
-    if (keyEl) {
-      keyEl.classList.add('active');
-    }
+    if (keyEl) keyEl.classList.add('active');
 
     triggerPianoNote(state.activeChannel, midi);
     showLcdMessage(`KEY: ${midiToNoteName(midi)}`, 850);
@@ -123,7 +118,6 @@ export function createMinimalPiano(container, { onStepWritten }) {
       state.selectedStep = qStep;
       recordMidiToStep(qStep, midi);
     } else if (!state.isPlaying && state.isRec) {
-      // Step-by-step pianist chord entry when REC is armed & stopped!
       recordMidiToStep(state.selectedStep, midi);
     }
   }
@@ -145,7 +139,6 @@ export function createMinimalPiano(container, { onStepWritten }) {
         initAudio();
         const st = state.patterns[state.activePattern][state.activeChannel][i];
         if (state.selectedStep === i && st.on) {
-          // Tap already-selected active step to clear it quickly
           st.on = false;
           delete st.midi;
           delete st.notes;
@@ -173,73 +166,51 @@ export function createMinimalPiano(container, { onStepWritten }) {
     }
   }
 
+  function makeKeycap(spec, isSharp, scalePCs, startMidi) {
+    const midi = startMidi + spec.semi;
+    const inScale = scalePCs.has(midi % 12);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `px-keycap ${isSharp ? 'px-sharp' : 'px-natural'} ${inScale ? 'in-scale' : ''}`;
+    btn.dataset.semi = String(spec.semi);
+    btn.style.gridColumn = `${spec.colStart} / span 2`;
+    btn.style.gridRow = isSharp ? '1' : '2';
+
+    const displayLbl = spec.semi === 0
+      ? `C${state.pianoOctave}`
+      : (spec.semi === 12 ? `C${state.pianoOctave + 1}` : spec.label);
+
+    btn.innerHTML = `
+      <span class="keycap-led"></span>
+      <span class="keycap-note">${displayLbl}</span>
+    `;
+
+    btn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      btn.setPointerCapture(e.pointerId);
+      triggerSemi(spec.semi, btn);
+    });
+    const up = (e) => {
+      if (btn.hasPointerCapture(e.pointerId)) btn.releasePointerCapture(e.pointerId);
+      btn.classList.remove('active');
+    };
+    btn.addEventListener('pointerup', up);
+    btn.addEventListener('pointercancel', up);
+    return btn;
+  }
+
   function renderKeys() {
     keysEl.innerHTML = '';
     const startMidi = baseMidi();
-    rangeLbl.textContent = `${midiToNoteName(startMidi)}–${midiToNoteName(startMidi + 14)}`;
+    rangeLbl.textContent = `${midiToNoteName(startMidi)}–${midiToNoteName(startMidi + 12)}`;
     const scalePCs = getMoodPitchClasses(state.moodId);
 
-    const stage = document.createElement('div');
-    stage.className = 'piano-stage';
-
-    const whiteWrap = document.createElement('div');
-    whiteWrap.className = 'piano-whites';
-
-    WHITE_KEYS.forEach((wk) => {
-      const midi = startMidi + wk.semi;
-      const inScale = scalePCs.has(midi % 12);
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = `p-key p-white ${inScale ? 'in-scale' : ''}`;
-      btn.dataset.semi = String(wk.semi);
-      btn.innerHTML = `
-        <span class="scale-dot"></span>
-        <span class="p-note">${wk.name}${wk.semi === 0 ? state.pianoOctave : (wk.semi === 12 ? state.pianoOctave + 1 : '')}</span>
-      `;
-      btn.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
-        btn.setPointerCapture(e.pointerId);
-        triggerSemi(wk.semi, btn);
-      });
-      const up = (e) => {
-        if (btn.hasPointerCapture(e.pointerId)) btn.releasePointerCapture(e.pointerId);
-        btn.classList.remove('active');
-      };
-      btn.addEventListener('pointerup', up);
-      btn.addEventListener('pointercancel', up);
-      whiteWrap.appendChild(btn);
+    SHARP_KEYS.forEach(spec => {
+      keysEl.appendChild(makeKeycap(spec, true, scalePCs, startMidi));
     });
-
-    stage.appendChild(whiteWrap);
-
-    // Raised chromatic black keys dead-centered on the exact seam between white keys
-    const whiteWidthPct = 100 / WHITE_KEYS.length;
-    BLACK_KEYS.forEach((bk) => {
-      const midi = startMidi + bk.semi;
-      const inScale = scalePCs.has(midi % 12);
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = `p-key p-black ${inScale ? 'in-scale' : ''}`;
-      btn.dataset.semi = String(bk.semi);
-      btn.style.left = `${(bk.afterWhite + 1) * whiteWidthPct}%`;
-      btn.innerHTML = '<span class="scale-dot"></span>';
-
-      btn.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        btn.setPointerCapture(e.pointerId);
-        triggerSemi(bk.semi, btn);
-      });
-      const up = (e) => {
-        if (btn.hasPointerCapture(e.pointerId)) btn.releasePointerCapture(e.pointerId);
-        btn.classList.remove('active');
-      };
-      btn.addEventListener('pointerup', up);
-      btn.addEventListener('pointercancel', up);
-      stage.appendChild(btn);
+    NATURAL_KEYS.forEach(spec => {
+      keysEl.appendChild(makeKeycap(spec, false, scalePCs, startMidi));
     });
-
-    keysEl.appendChild(stage);
   }
 
   btnOctDown.addEventListener('click', () => {

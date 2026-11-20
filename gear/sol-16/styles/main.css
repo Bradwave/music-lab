@@ -676,13 +676,13 @@ body {
 }
 
 /* ============================================================================
-   MINIMAL PIXEL PIANO KEYBOARD (FOR PIANISTS — SWAPS WITH 4x4 GRID)
+   MINIMAL PIXEL HARDWARE KEYBED (OP-Z / ELEKTRON / NANOLOOP STYLE)
+   Pure matte charcoal & sunlit orange 16-column pixel keycap grid.
    ============================================================================ */
 .piano-panel {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  min-height: 236px;
 }
 
 .piano-bar {
@@ -753,100 +753,83 @@ body {
   color: #16110d;
 }
 
-.piano-keys {
+.pixel-keybed {
   flex: 1 1 auto;
   height: 196px;
-  min-height: 168px;
-  background: #12100e;
-  border: 2px solid #352f29;
-  padding: 3px;
-  touch-action: none;
-  display: flex;
-}
-
-.piano-stage {
-  position: relative;
-  flex: 1 1 auto;
-  width: 100%;
-  min-height: 0;
-}
-
-.piano-whites {
-  position: absolute;
-  inset: 0;
+  background: #14110f;
+  border: 2px solid #302a24;
+  box-shadow: inset 2px 2px 0 #0b0908;
+  padding: 6px;
   display: grid;
-  grid-template-columns: repeat(9, 1fr);
-  gap: 2px;
+  grid-template-columns: repeat(16, minmax(0, 1fr));
+  grid-template-rows: 1fr 1.18fr;
+  column-gap: 4px;
+  row-gap: 6px;
+  touch-action: none;
 }
 
-.p-key {
+.px-keycap {
   font-family: var(--font-px);
   margin: 0;
-  padding: 0 0 7px 0;
+  padding: 6px 2px 7px;
   cursor: pointer;
   touch-action: none;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-end;
-  gap: 5px;
+  justify-content: space-between;
+  line-height: 1;
   transition: transform 0.02s steps(1);
 }
 
-.p-white {
-  background: #dfd0b8;
-  color: #29221c;
-  border: 2px solid #f5e9d4;
-  border-bottom: 4px solid #968772;
-  height: 100%;
+.px-natural {
+  background: #2b2621;
+  color: var(--cream);
+  border: 2px solid #494037;
+  box-shadow: 0 3px 0 var(--case-shadow), inset 2px 2px 0 #38312a;
 }
 
-.p-white.active {
-  background: var(--orange);
-  border-color: var(--orange-bright);
-  border-bottom-color: var(--orange-deep);
-  color: #16110d;
+.px-sharp {
+  background: #1a1714;
+  color: #bfb2a0;
+  border: 2px solid #36302a;
+  box-shadow: 0 3px 0 #070605, inset 2px 2px 0 #24201c;
+}
+
+.px-keycap.in-scale {
+  border-top-color: #6b412c;
+}
+
+.px-keycap.active {
   transform: translateY(2px);
-}
-
-.p-black {
-  position: absolute;
-  top: 0;
-  width: 7.0%;
-  height: 56%;
-  transform: translateX(-50%);
-  background: #1b1714;
-  border: 2px solid #3b342d;
-  border-bottom: 4px solid #090807;
-  z-index: 5;
-  padding: 0 0 6px 0;
-}
-
-.p-black.active {
   background: var(--orange);
   border-color: var(--orange-bright);
-  border-bottom-color: var(--orange-deep);
-  transform: translateX(-50%) translateY(2px);
+  box-shadow: 0 1px 0 var(--orange-deep), inset 1px 1px 0 #ffa97d;
+  color: #16110d;
 }
 
-.scale-dot {
-  width: 4px;
-  height: 4px;
-  background: transparent;
+.keycap-led {
+  width: 14px;
+  height: 3px;
+  background: #1b1714;
   pointer-events: none;
 }
 
-.p-key.in-scale .scale-dot {
+.px-sharp .keycap-led {
+  background: #12100e;
+}
+
+.px-keycap.in-scale .keycap-led {
   background: var(--orange);
 }
 
-.p-key.active .scale-dot {
+.px-keycap.active .keycap-led {
   background: #16110d;
 }
 
-.p-note {
-  font-size: 8px;
-  line-height: 1;
+.keycap-note {
+  font-size: 9px;
+  font-weight: 700;
   pointer-events: none;
 }
 
@@ -1227,9 +1210,20 @@ body {
     gap: 4px;
   }
 
-  .piano-keys {
+  .pixel-keybed {
     height: auto;
     min-height: 0;
+    padding: 5px;
+    column-gap: 3px;
+    row-gap: 5px;
+  }
+
+  .keycap-note {
+    font-size: 8px;
+  }
+
+  .keycap-led {
+    width: 10px;
   }
 
   .mini-step {
