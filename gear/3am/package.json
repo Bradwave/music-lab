@@ -1,0 +1,21 @@
+{
+  "name": "3am",
+  "version": "1.0.0",
+  "description": "3AM — Minimal Berlin 3 AM pixel-art 4-track tape deck for deep house & microhouse",
+  "type": "module",
+  "scripts": {
+    "dev": "node server.mjs",
+    "start": "node server.mjs"
+  },
+  "keywords": [
+    "deep-house",
+    "microhouse",
+    "web-audio",
+    "pixel-art",
+    "synthesizer",
+    "polyrhythm",
+    "tape-loop",
+    "pwa"
+  ],
+  "license": "MIT"
+}

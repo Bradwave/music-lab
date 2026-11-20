@@ -1,0 +1,610 @@
+/* ============================================================================
+   3AM // BERLIN 3 AM PIXEL HARDWARE DESIGN SYSTEM
+   Matte slate-charcoal casing, pale sage-mint LCD header, phosphor mint anchors,
+   warm amber micro-dust & dub throws. Zero build steps.
+   ============================================================================ */
+
+@font-face {
+  font-family: 'Silkscreen';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fonts/silkscreen-400.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Silkscreen';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../fonts/silkscreen-700.woff2') format('woff2');
+}
+
+:root {
+  --bg-desk: #0a0e0f;
+  --desk-dot: #182123;
+
+  --case-bg: #141a1c;
+  --case-panel: #1a2224;
+  --case-border: #2c383b;
+  --case-hi: #242e31;
+  --case-shadow: #070a0b;
+
+  --mint: #4ee6a8;
+  --mint-bright: #9cffd8;
+  --mint-deep: #1e7353;
+  --mint-soft: #163029;
+
+  --amber: #f2a649;
+  --amber-bright: #ffd394;
+  --amber-deep: #855115;
+  --amber-soft: #302415;
+
+  --sage: #d7e6dd;
+  --muted: #768b85;
+  --dim: #465752;
+
+  --font-px: 'Silkscreen', ui-monospace, 'SF Mono', Menlo, Monaco, monospace;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.hidden {
+  display: none !important;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100dvh;
+  background-color: var(--bg-desk);
+  background-image: radial-gradient(var(--desk-dot) 1px, transparent 1px);
+  background-size: 16px 16px;
+  color: var(--sage);
+  font-family: var(--font-px);
+  -webkit-font-smoothing: none;
+  overflow-x: hidden;
+  overscroll-behavior: none;
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(10px, env(safe-area-inset-top)) 10px max(14px, env(safe-area-inset-bottom)) 10px;
+}
+
+/* Main Minimal Hardware Chassis */
+.chassis {
+  position: relative;
+  width: 100%;
+  max-width: 452px;
+  background: var(--case-bg);
+  border: 2px solid var(--case-border);
+  box-shadow:
+    0 6px 0 var(--case-shadow),
+    6px 6px 0 var(--case-shadow),
+    inset 2px 2px 0 var(--case-hi),
+    inset -2px -2px 0 #0c1011;
+  padding: 11px 11px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+/* Tactile Pixel Buttons */
+.px-btn {
+  font-family: var(--font-px);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  background: #1e2729;
+  color: var(--sage);
+  border: 2px solid #324145;
+  box-shadow: 0 3px 0 var(--case-shadow), inset 1px 1px 0 #2b383b;
+  padding: 6px 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  line-height: 1;
+  transition: transform 0.03s steps(1);
+  touch-action: manipulation;
+}
+
+.px-btn:hover {
+  border-color: #465a60;
+}
+
+.px-btn:active,
+.px-btn.pressed {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--case-shadow), inset 1px 1px 0 #151c1e;
+}
+
+.px-btn.active-mint {
+  background: var(--mint);
+  color: #0e1714;
+  border-color: var(--mint-bright);
+  box-shadow: 0 3px 0 var(--mint-deep), inset 1px 1px 0 #b8ffe4;
+  font-weight: 700;
+}
+
+.px-btn.active-amber {
+  background: var(--amber);
+  color: #17110a;
+  border-color: var(--amber-bright);
+  box-shadow: 0 3px 0 var(--amber-deep), inset 1px 1px 0 #ffe2b3;
+  font-weight: 700;
+}
+
+/* Top Bar */
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.screw {
+  width: 7px;
+  height: 7px;
+  background: #242e31;
+  border: 2px solid #090d0e;
+  position: relative;
+}
+.screw::after {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 0;
+  width: 3px;
+  height: 1px;
+  background: #090d0e;
+}
+
+.brand-name {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--sage);
+}
+
+.reel-pills {
+  display: grid;
+  grid-template-columns: repeat(4, 30px);
+  gap: 4px;
+}
+
+.reel-btn {
+  padding: 5px 0;
+  font-size: 10px;
+}
+
+.top-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.icon-btn {
+  width: 28px;
+  height: 26px;
+  padding: 0;
+  font-size: 12px;
+}
+
+/* Interactive Pixel Tape Deck Bezel */
+.deck-bezel {
+  background: #090e0d;
+  border: 2px solid #2b383a;
+  box-shadow:
+    inset 3px 3px 0 #040706,
+    inset -2px -2px 0 #1c2628;
+  padding: 5px;
+}
+
+#tapeCanvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 264 / 192;
+  background: #0c1312;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  border: 2px solid #141e1c;
+  touch-action: none;
+}
+
+/* Transport Bar */
+.transport-bar {
+  display: grid;
+  grid-template-columns: 1.45fr 1fr 0.95fr;
+  gap: 6px;
+}
+
+.play-btn,
+.tap-btn,
+.mood-btn {
+  padding: 9px 8px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.tap-btn {
+  color: var(--muted);
+}
+
+.tap-btn.active-amber {
+  color: #17110a;
+}
+
+.mood-btn {
+  color: var(--mint);
+  border-color: #2c4a40;
+}
+
+.led {
+  width: 6px;
+  height: 6px;
+  background: #101617;
+  border: 1px solid #354448;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.led.on-mint {
+  background: #ffffff;
+  border-color: #ffffff;
+}
+
+.led.on-amber {
+  background: #17110a;
+  border-color: #17110a;
+  animation: pxBlink 0.5s steps(1) infinite;
+}
+
+@keyframes pxBlink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0.35; }
+}
+
+/* 4-Knob Panel */
+.knob-panel {
+  background: #101617;
+  border: 2px solid #263134;
+  box-shadow: inset 2px 2px 0 #0a0e0f;
+  padding: 7px 6px 6px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: center;
+  gap: 4px;
+}
+
+.pixel-knob-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.knob-dial {
+  width: 48px;
+  height: 48px;
+  cursor: ns-resize;
+  touch-action: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+}
+
+.knob-dial:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 2px;
+}
+
+.knob-dial.is-turning {
+  transform: scale(1.05);
+}
+
+.knob-canvas {
+  width: 48px;
+  height: 48px;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  display: block;
+}
+
+.knob-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  line-height: 1;
+}
+
+.knob-label {
+  font-size: 8px;
+  color: var(--muted);
+}
+
+.knob-val {
+  font-size: 9px;
+  color: var(--sage);
+  font-weight: 700;
+}
+
+/* Performance Pads & Per-Lane SEED Strip */
+.pad-section {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.section-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1px;
+}
+
+.meta-label {
+  font-size: 8px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
+.pad-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.lane-pad-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.lane-pad {
+  width: 100%;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: space-between;
+  padding: 7px 7px 6px;
+  min-height: 46px;
+  background: #1c2527;
+  border-color: #303f43;
+}
+
+.lane-pad .pad-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.lane-pad .pad-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--sage);
+}
+
+.lane-pad .pad-key {
+  font-size: 8px;
+  color: var(--muted);
+}
+
+.lane-pad .pad-sub {
+  font-size: 8px;
+  color: var(--amber);
+  letter-spacing: 0.06em;
+  text-align: left;
+}
+
+.lane-pad.tap-armed {
+  border-color: #5b4827;
+}
+
+.lane-pad.tap-armed .pad-sub {
+  color: var(--mint);
+}
+
+.lane-pad.is-muted {
+  opacity: 0.5;
+}
+
+.lane-pad.pressed {
+  background: var(--amber);
+  border-color: var(--amber-bright);
+  box-shadow: 0 1px 0 var(--amber-deep);
+}
+
+.lane-pad.tap-armed.pressed {
+  background: var(--mint);
+  border-color: var(--mint-bright);
+  box-shadow: 0 1px 0 var(--mint-deep);
+}
+
+.lane-pad.pressed .pad-name,
+.lane-pad.pressed .pad-key,
+.lane-pad.pressed .pad-sub {
+  color: #0e1412;
+}
+
+.lane-micro-actions {
+  display: grid;
+  grid-template-columns: 1fr 22px;
+  gap: 3px;
+}
+
+.micro-btn {
+  font-family: var(--font-px);
+  font-size: 8px;
+  background: #171f21;
+  color: var(--muted);
+  border: 2px solid #283438;
+  padding: 4px 2px;
+  cursor: pointer;
+  line-height: 1;
+  touch-action: manipulation;
+}
+
+.micro-btn:hover {
+  border-color: var(--mint);
+  color: var(--mint);
+}
+
+.micro-btn.dim:hover {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+/* Modals (Menu & Guide) */
+.overlay-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(7, 10, 11, 0.84);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 60;
+}
+
+.modal {
+  width: 100%;
+  max-width: 390px;
+  background: var(--case-bg);
+  border: 2px solid var(--case-border);
+  box-shadow: 0 6px 0 #050708, 6px 6px 0 #050708;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 2px solid #242f32;
+  padding-bottom: 8px;
+}
+
+.modal-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--mint);
+  letter-spacing: 0.06em;
+}
+
+.modal-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.modal-label {
+  font-size: 8px;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+}
+
+.modal-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.modal-btn {
+  width: 100%;
+  padding: 9px 8px;
+  font-size: 10px;
+}
+
+.modal-btn.subtle-danger {
+  color: var(--muted);
+}
+
+.modal-btn.subtle-danger:hover {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+/* Quick Guide List */
+.guide-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.guide-list li {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 9px;
+  line-height: 1.5;
+  color: var(--sage);
+}
+
+.badge {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: #0d1412;
+}
+
+.badge.mint {
+  background: var(--mint);
+}
+
+.badge.amber {
+  background: var(--amber);
+}
+
+.key-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: space-between;
+  background: #0f1415;
+  border: 2px solid #232e31;
+  padding: 6px 8px;
+  font-size: 8px;
+  color: var(--muted);
+}
+
+@media (max-width: 390px) {
+  .chassis {
+    padding: 8px;
+    gap: 7px;
+  }
+  .knob-dial,
+  .knob-canvas {
+    width: 44px;
+    height: 44px;
+  }
+  .lane-pad {
+    min-height: 42px;
+    padding: 6px 5px;
+  }
+}

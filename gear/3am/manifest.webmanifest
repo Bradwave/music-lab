@@ -1,0 +1,16 @@
+{
+  "name": "3AM — Microhouse Tape Deck",
+  "short_name": "3AM",
+  "description": "Minimal Berlin 3 AM pixel-art 4-track magnetic tape loom for deep house & microhouse.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0d1112",
+  "theme_color": "#131718",
+  "icons": [
+    {
+      "src": "./icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
