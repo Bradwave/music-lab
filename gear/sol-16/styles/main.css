@@ -712,33 +712,55 @@ body {
 
 .mini-steps {
   display: grid;
-  grid-template-columns: repeat(16, 1fr);
-  gap: 2px;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 4px;
 }
 
 .mini-step {
   font-family: var(--font-px);
-  font-size: 7px;
-  height: 20px;
-  padding: 0;
+  height: 36px;
+  padding: 3px 2px 4px;
   background: #221e1a;
-  color: var(--muted);
-  border: 1px solid #38312b;
+  color: var(--cream);
+  border: 2px solid #38312b;
+  box-shadow: 0 2px 0 var(--case-shadow);
   cursor: pointer;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   line-height: 1;
+  min-width: 0;
+}
+
+.ms-num {
+  font-size: 7px;
+  opacity: 0.48;
+  pointer-events: none;
+}
+
+.ms-val {
+  font-size: 8px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  pointer-events: none;
 }
 
 .mini-step.beat-start {
-  border-left: 2px solid #594d42;
+  border-left: 3px solid #594d42;
 }
 
 .mini-step.on {
   background: var(--orange-soft);
   border-color: var(--orange);
   color: var(--orange-bright);
+}
+
+.mini-step.on .ms-num {
+  opacity: 0.72;
 }
 
 .mini-step.selected {
@@ -755,14 +777,14 @@ body {
 
 .pixel-keybed {
   flex: 1 1 auto;
-  height: 196px;
+  height: 150px;
   background: #14110f;
   border: 2px solid #302a24;
   box-shadow: inset 2px 2px 0 #0b0908;
   padding: 6px;
   display: grid;
   grid-template-columns: repeat(16, minmax(0, 1fr));
-  grid-template-rows: 1fr 1.18fr;
+  grid-template-rows: 1fr 1.12fr;
   column-gap: 4px;
   row-gap: 6px;
   touch-action: none;
@@ -1207,10 +1229,23 @@ body {
   .piano-panel {
     flex: 1 1 auto;
     min-height: 0;
+    gap: 5px;
+  }
+
+  .mini-steps {
+    flex: 0.72 1 auto;
+    min-height: 68px;
+    grid-template-rows: repeat(2, minmax(0, 1fr));
     gap: 4px;
   }
 
+  .mini-step {
+    height: auto;
+    min-height: 30px;
+  }
+
   .pixel-keybed {
+    flex: 1 1 auto;
     height: auto;
     min-height: 0;
     padding: 5px;
@@ -1224,10 +1259,6 @@ body {
 
   .keycap-led {
     width: 10px;
-  }
-
-  .mini-step {
-    height: 18px;
   }
 
   .fx-section {

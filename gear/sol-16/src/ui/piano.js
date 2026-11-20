@@ -3,7 +3,7 @@
 // zero overlapping strips, multi-touch polyphony, scale LED indicators, & chord capture!
 
 import { state, saveState, showLcdMessage } from '../state/store.js';
-import { getMoodPitchClasses, midiToNoteName } from '../state/scales.js';
+import { getMoodPitchClasses, midiToNoteName, getStepDisplayLabel } from '../state/scales.js';
 import { initAudio } from '../audio/engine.js';
 import { triggerPianoNote } from '../audio/synths.js';
 import { getQuantizedStepIndex } from '../audio/scheduler.js';
@@ -134,7 +134,7 @@ export function createMinimalPiano(container, { onStepWritten }) {
       b.type = 'button';
       b.className = `mini-step ${i % 4 === 0 ? 'beat-start' : ''}`;
       b.dataset.step = String(i);
-      b.textContent = String(i + 1);
+      b.innerHTML = `<span class="ms-num">${i + 1}</span><span class="ms-val"></span>`;
       b.addEventListener('click', () => {
         initAudio();
         const st = state.patterns[state.activePattern][state.activeChannel][i];
@@ -156,13 +156,21 @@ export function createMinimalPiano(container, { onStepWritten }) {
   }
 
   function renderMiniSteps() {
-    const pat = state.patterns[state.activePattern][state.activeChannel];
+    const chId = state.activeChannel;
+    const pat = state.patterns[state.activePattern][chId];
     const children = miniStepsEl.children;
     for (let i = 0; i < children.length; i++) {
       const st = pat[i];
-      children[i].classList.toggle('on', Boolean(st && st.on));
-      children[i].classList.toggle('selected', i === state.selectedStep);
-      children[i].classList.toggle('playing', i === state.currentStep);
+      const el = children[i];
+      el.classList.toggle('on', Boolean(st && st.on));
+      el.classList.toggle('selected', i === state.selectedStep);
+      el.classList.toggle('playing', i === state.currentStep);
+      const valEl = el.querySelector('.ms-val');
+      if (valEl) {
+        valEl.textContent = st && st.on
+          ? getStepDisplayLabel(chId, st, state.moodId, state.smplUseCustom)
+          : '';
+      }
     }
   }
 
