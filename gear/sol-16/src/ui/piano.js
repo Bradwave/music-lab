@@ -179,6 +179,9 @@ export function createMinimalPiano(container, { onStepWritten }) {
     rangeLbl.textContent = `${midiToNoteName(startMidi)}–${midiToNoteName(startMidi + 14)}`;
     const scalePCs = getMoodPitchClasses(state.moodId);
 
+    const stage = document.createElement('div');
+    stage.className = 'piano-stage';
+
     const whiteWrap = document.createElement('div');
     whiteWrap.className = 'piano-whites';
 
@@ -207,9 +210,9 @@ export function createMinimalPiano(container, { onStepWritten }) {
       whiteWrap.appendChild(btn);
     });
 
-    keysEl.appendChild(whiteWrap);
+    stage.appendChild(whiteWrap);
 
-    // Raised chromatic black keys aligned cleanly over the 9 white keys
+    // Raised chromatic black keys dead-centered on the exact seam between white keys
     const whiteWidthPct = 100 / WHITE_KEYS.length;
     BLACK_KEYS.forEach((bk) => {
       const midi = startMidi + bk.semi;
@@ -218,8 +221,7 @@ export function createMinimalPiano(container, { onStepWritten }) {
       btn.type = 'button';
       btn.className = `p-key p-black ${inScale ? 'in-scale' : ''}`;
       btn.dataset.semi = String(bk.semi);
-      const leftPct = (bk.afterWhite + 1) * whiteWidthPct;
-      btn.style.left = `calc(${leftPct}% - 4.4%)`;
+      btn.style.left = `${(bk.afterWhite + 1) * whiteWidthPct}%`;
       btn.innerHTML = '<span class="scale-dot"></span>';
 
       btn.addEventListener('pointerdown', (e) => {
@@ -234,8 +236,10 @@ export function createMinimalPiano(container, { onStepWritten }) {
       };
       btn.addEventListener('pointerup', up);
       btn.addEventListener('pointercancel', up);
-      keysEl.appendChild(btn);
+      stage.appendChild(btn);
     });
+
+    keysEl.appendChild(stage);
   }
 
   btnOctDown.addEventListener('click', () => {

@@ -1,17 +1,17 @@
-const CACHE_NAME = 'sol16-pwa-v10';
+const CACHE_NAME = 'sol16-pwa-v11';
 
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.webmanifest',
-  './styles/main.css?v=10',
+  './styles/main.css?v=11',
   './fonts/silkscreen-400.woff2',
   './fonts/silkscreen-700.woff2',
   './icons/icon.svg',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/apple-touch-icon.png',
-  './src/main.js?v=10',
+  './src/main.js?v=11',
   './src/state/scales.js',
   './src/state/presets.js',
   './src/state/store.js',

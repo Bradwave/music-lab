@@ -754,13 +754,19 @@ body {
 }
 
 .piano-keys {
-  position: relative;
   flex: 1 1 auto;
   min-height: 158px;
   background: #12100e;
   border: 2px solid #352f29;
   padding: 3px;
   touch-action: none;
+  display: flex;
+}
+
+.piano-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
 }
 
 .piano-whites {
@@ -773,13 +779,14 @@ body {
 
 .p-key {
   font-family: var(--font-px);
+  margin: 0;
+  padding: 0 0 7px 0;
   cursor: pointer;
   touch-action: none;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
-  padding-bottom: 7px;
   gap: 5px;
   transition: transform 0.02s steps(1);
 }
@@ -802,21 +809,22 @@ body {
 
 .p-black {
   position: absolute;
-  top: 3px;
-  width: 8.8%;
-  height: 58%;
+  top: 0;
+  width: 7.0%;
+  height: 56%;
+  transform: translateX(-50%);
   background: #1b1714;
   border: 2px solid #3b342d;
   border-bottom: 4px solid #090807;
   z-index: 5;
-  padding-bottom: 6px;
+  padding: 0 0 6px 0;
 }
 
 .p-black.active {
   background: var(--orange);
   border-color: var(--orange-bright);
   border-bottom-color: var(--orange-deep);
-  transform: translateY(2px);
+  transform: translateX(-50%) translateY(2px);
 }
 
 .scale-dot {
