@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#141a1c" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="3AM" />
+  <meta name="description" content="3AM — Minimal Berlin 3 AM pixel-art 4-track tape deck for deep house & microhouse." />
+  <title>3AM // Microhouse Tape Loom</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" type="image/svg+xml" href="./icons/icon.svg" />
+  <link rel="stylesheet" href="./styles/main.css" />
+</head>
+<body>
+  <main class="chassis" id="chassis">
+    <!-- LEFT / TOP COLUMN: HEADER + INTERACTIVE PIXEL TAPE DECK -->
+    <div class="deck-col">
+      <header class="top-bar">
+        <div class="brand">
+          <span class="screw" aria-hidden="true"></span>
+          <span class="brand-name">3AM</span>
+        </div>
+
+        <nav class="reel-pills" aria-label="Starter Reels">
+          <button class="px-btn reel-btn" data-reel="0" title="Reel 1: Perlon (03:00 · F)">1</button>
+          <button class="px-btn reel-btn" data-reel="1" title="Reel 2: Kreuzberg (01:00 · C)">2</button>
+          <button class="px-btn reel-btn" data-reel="2" title="Reel 3: Tresor (05:00 · D)">3</button>
+          <button class="px-btn reel-btn" data-reel="3" title="Reel 4: Blank Tape (03:00 · A)">4</button>
+        </nav>
+
+        <div class="top-actions">
+          <button id="btnGuide" class="px-btn icon-btn" title="How to Play" aria-label="How to Play">?</button>
+          <button id="btnMenu" class="px-btn icon-btn" title="Menu & Export" aria-label="Menu">≡</button>
+        </div>
+      </header>
+
+      <section class="deck-bezel" aria-label="4-Track Magnetic Tape Deck">
+        <canvas id="tapeCanvas" width="264" height="224"></canvas>
+      </section>
+    </div>
+
+    <!-- RIGHT / BOTTOM COLUMN: NIGHT-ARC MOOD, TRANSPORT, KNOBS, PADS & TAPE FX -->
+    <div class="ctrl-col">
+      <!-- NIGHT-ARC MOOD / TONE SHIFTER (01:00 -> 07:00) -->
+      <section class="hour-bar" role="group" aria-label="Night-Arc Mood Tone">
+        <button class="px-btn hour-btn" data-hour="01" title="01:00 Warm Soulful Deep House (Rhodes & Dorian 9ths)">
+          <span class="hr-time">01:00</span>
+          <span class="hr-tag">WARM</span>
+        </button>
+        <button class="px-btn hour-btn" data-hour="03" title="03:00 Berlin Microhouse (Dark m9/m11 & Woody Clicks)">
+          <span class="hr-time">03:00</span>
+          <span class="hr-tag">MICRO</span>
+        </button>
+        <button class="px-btn hour-btn" data-hour="05" title="05:00 Dub Abyss (Phrygian Tension, Heavy Sub & Tape Grit)">
+          <span class="hr-time">05:00</span>
+          <span class="hr-tag">ABYSS</span>
+        </button>
+        <button class="px-btn hour-btn" data-hour="07" title="07:00 Afterhours Dawn (Lifted Maj9/6/9 Shimmer & Air)">
+          <span class="hr-time">07:00</span>
+          <span class="hr-tag">DAWN</span>
+        </button>
+      </section>
+
+      <!-- COMPACT TRANSPORT & ROOT KEY BAR -->
+      <section class="transport-bar">
+        <button id="btnPlay" class="px-btn play-btn" title="Play / Stop (Space)">
+          <span id="ledPlay" class="led"></span>
+          <span id="txtPlay">PLAY</span>
+        </button>
+
+        <button id="btnTap" class="px-btn tap-btn" title="Live Tap-In Anchor Mode (R)">
+          <span id="ledTap" class="led"></span>
+          <span>TAP</span>
+        </button>
+
+        <button id="btnKey" class="px-btn mood-btn" title="Cycle Root Key (K)">KEY F</button>
+      </section>
+
+      <!-- 4 ALWAYS-VISIBLE PIXEL ROTARY KNOBS -->
+      <section class="knob-panel" aria-label="Macro Controls">
+        <div id="knobMicro"></div>
+        <div id="knobDepth"></div>
+        <div id="knobDrift"></div>
+        <div id="knobTempo"></div>
+      </section>
+
+      <!-- 4 LIVE LANE DUB-THROW / TAP PADS + PER-LANE SEED -->
+      <section class="pad-section" aria-label="Lane Performance Pads">
+        <div class="section-meta">
+          <span id="padHint" class="meta-label">HOLD PADS (A S D F) FOR LANE DUB THROW</span>
+        </div>
+        <div class="pad-row" id="padRow"></div>
+      </section>
+
+      <!-- 4 MASTER PUNCH-IN TAPE FX PADS (HOLD TO PERFORM) -->
+      <section class="fx-section" aria-label="Master Punch-In Tape FX">
+        <div class="section-meta">
+          <span class="meta-label">TAPE FX</span>
+          <span id="fxStatus" class="meta-status">HOLD TO PERFORM</span>
+        </div>
+        <div class="fx-row">
+          <button class="px-btn fx-btn" data-fx="WASH" title="Dub Tape Echo Flood (Hold Z)">
+            <span class="fx-name">WASH</span>
+            <span class="fx-key">Z</span>
+          </button>
+          <button class="px-btn fx-btn" data-fx="SUBM" title="Submerge Underwater Club Filter (Hold X)">
+            <span class="fx-name">SUBM</span>
+            <span class="fx-key">X</span>
+          </button>
+          <button class="px-btn fx-btn" data-fx="FLUT" title="Tape Brake & Cassette Flutter (Hold C)">
+            <span class="fx-name">FLUT</span>
+            <span class="fx-key">C</span>
+          </button>
+          <button class="px-btn fx-btn" data-fx="SLICE" title="Microhouse 32nd-Note Tape Gate (Hold V)">
+            <span class="fx-name">SLICE</span>
+            <span class="fx-key">V</span>
+          </button>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <input id="fileJsonInput" type="file" accept=".json,application/json" class="hidden" />
+
+  <!-- COMPACT MENU MODAL -->
+  <div id="menuBackdrop" class="overlay-backdrop hidden">
+    <aside class="modal" role="dialog" aria-label="3AM Menu">
+      <div class="modal-header">
+        <span class="modal-title">3AM // TAPE MENU</span>
+        <button id="btnCloseMenu" class="px-btn icon-btn" aria-label="Close">×</button>
+      </div>
+
+      <div class="modal-group">
+        <span class="modal-label">AUDIO CAPTURE</span>
+        <button id="btnWav" class="px-btn modal-btn">REC MASTER .WAV</button>
+      </div>
+
+      <div class="modal-group">
+        <span class="modal-label">REEL FILE</span>
+        <div class="modal-row">
+          <button id="btnSaveJson" class="px-btn modal-btn">SAVE .JSON</button>
+          <button id="btnLoadJson" class="px-btn modal-btn">LOAD .JSON</button>
+        </div>
+      </div>
+
+      <div class="modal-group">
+        <span class="modal-label">CLEAN SLATE</span>
+        <button id="btnResetReel" class="px-btn modal-btn subtle-danger">RESTORE CURRENT REEL</button>
+      </div>
+    </aside>
+  </div>
+
+  <!-- QUICK GUIDE MODAL -->
+  <div id="guideBackdrop" class="overlay-backdrop hidden">
+    <aside class="modal" role="dialog" aria-label="How to Play 3AM">
+      <div class="modal-header">
+        <span class="modal-title">HOW TO PLAY 3AM</span>
+        <button id="btnCloseGuide" class="px-btn icon-btn" aria-label="Close">×</button>
+      </div>
+
+      <ol class="guide-list">
+        <li>
+          <span class="badge mint">1</span>
+          <div><strong>MINT = YOUR ANCHORS.</strong> Tap a tape to place/remove solid hits. Drag an anchor <strong>up/down</strong> to change pitch, chord, or drum voice.</div>
+        </li>
+        <li>
+          <span class="badge amber">2</span>
+          <div><strong>AMBER = MICRO DUST.</strong> Twist <strong>MICRO</strong> to weave ghost clicks and dub whispers around your anchors without moving them.</div>
+        </li>
+        <li>
+          <span class="badge mint">3</span>
+          <div><strong>01:00–07:00 MOOD ARC.</strong> Shift harmony &amp; sonic color from warm soulful deep house (<strong>01:00</strong>) to Berlin micro (<strong>03:00</strong>), dark dub abyss (<strong>05:00</strong>), or sunlit dawn (<strong>07:00</strong>).</div>
+        </li>
+        <li>
+          <span class="badge amber">4</span>
+          <div><strong>LIVE DUB &amp; TAPE FX.</strong> Hold <strong>SUB–AIR</strong> for single-lane dub throws, or hold <strong>WASH / SUBM / FLUT / SLICE</strong> (<strong>Z–V</strong>) for live club transitions.</div>
+        </li>
+      </ol>
+
+      <div class="key-strip">
+        <span>SPACE: PLAY</span>
+        <span>H: HOUR</span>
+        <span>K: KEY</span>
+        <span>A–F: DUB/TAP</span>
+        <span>Z–V: FX</span>
+      </div>
+
+      <button id="btnGuideStart" class="px-btn active-mint modal-btn">CLOSE &amp; ROLL TAPE</button>
+    </aside>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
