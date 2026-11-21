@@ -6,6 +6,22 @@ function getTapePitchFactor() {
   return state.fx.TAPE ? 0.83 : 1.0;
 }
 
+// Disconnect all per-voice nodes from persistent buses once the voice's source ends
+function cleanupOnEnded(source, nodes) {
+  source.onended = () => {
+    source.onended = null;
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i];
+      if (!node) continue;
+      try {
+        node.disconnect();
+      } catch {
+        // Ignore already-disconnected nodes
+      }
+    }
+  };
+}
+
 // 1) WARM ANALOG HOUSE KICK (TONE = warmth/punch, DECAY = length, SPACE = room tail, DRIVE = crunch/comp)
 function playKick(time, step, params) {
   const { audioCtx, reverbSend } = getAudioNodes();
@@ -41,13 +57,15 @@ function playKick(time, step, params) {
   gain.connect(drumBus);
 
   // Subtle house room ambience when SPACE > 0.15
+  let revTap = null;
   if (space > 0.15) {
-    const revTap = audioCtx.createGain();
+    revTap = audioCtx.createGain();
     revTap.gain.value = (space - 0.15) * 0.25;
     gain.connect(revTap);
     revTap.connect(reverbSend);
   }
 
+  cleanupOnEnded(osc, [osc, filt, gain, revTap]);
   osc.start(time);
   osc.stop(time + dur + 0.03);
 
@@ -63,6 +81,7 @@ function playKick(time, step, params) {
 
   clickOsc.connect(clickGain);
   clickGain.connect(drumBus);
+  cleanupOnEnded(clickOsc, [clickOsc, clickGain]);
   clickOsc.start(time);
   clickOsc.stop(time + 0.024);
 
@@ -106,14 +125,16 @@ function playPerc(time, step, params) {
     bp.connect(gain);
     gain.connect(drumBus);
 
+    let s = null;
     if (space > 0.25 || state.fx.DUB) {
-      const s = audioCtx.createGain();
+      s = audioCtx.createGain();
       s.gain.value = space * 0.4;
       gain.connect(s);
       s.connect(reverbSend);
       if (space > 0.55 || state.fx.DUB) s.connect(dubSend);
     }
 
+    cleanupOnEnded(src, [src, hp, bp, gain, s]);
     src.start(time, Math.random() * 0.8);
     src.stop(time + dur + 0.02);
     return;
@@ -139,6 +160,7 @@ function playPerc(time, step, params) {
     bp.connect(gain);
     gain.connect(drumBus);
 
+    cleanupOnEnded(src, [src, bp, gain]);
     src.start(time, Math.random() * 0.8);
     src.stop(time + dur + 0.02);
     return;
@@ -166,14 +188,16 @@ function playPerc(time, step, params) {
       src.connect(bp);
       bp.connect(g);
       g.connect(drumBus);
+      let rev = null;
       if (isLast) {
-        const rev = audioCtx.createGain();
+        rev = audioCtx.createGain();
         rev.gain.value = 0.12 + space * 0.65;
         g.connect(rev);
         rev.connect(reverbSend);
         if (space > 0.5 || state.fx.DUB) rev.connect(dubSend);
       }
 
+      cleanupOnEnded(src, [src, bp, g, rev]);
       src.start(time + off, Math.random() * 0.8);
       src.stop(time + off + d + 0.02);
     });
@@ -208,6 +232,7 @@ function playPerc(time, step, params) {
     dubTap.connect(dubSend);
     dubTap.connect(reverbSend);
 
+    cleanupOnEnded(osc1, [osc1, osc2, gain, dubTap]);
     osc1.start(time);
     osc2.start(time);
     osc1.stop(time + dur + 0.02);
@@ -244,6 +269,7 @@ function playPerc(time, step, params) {
   send.connect(reverbSend);
   if (space > 0.4 || state.fx.DUB) send.connect(dubSend);
 
+  cleanupOnEnded(osc, [osc, filt, gain, send]);
   osc.start(time);
   osc.stop(time + dur + 0.03);
 
@@ -259,6 +285,7 @@ function playPerc(time, step, params) {
   slap.connect(slapBp);
   slapBp.connect(slapG);
   slapG.connect(drumBus);
+  cleanupOnEnded(slap, [slap, slapBp, slapG]);
   slap.start(time, Math.random() * 0.6);
   slap.stop(time + 0.025);
 }
@@ -312,11 +339,13 @@ function playBass(time, step, params) {
   gain.connect(duckBus);
 
   // Optional dub bass bounce via SPACE knob (high-passed so sub stays clean!)
+  let hp = null;
+  let s = null;
   if (space > 0.2) {
-    const hp = audioCtx.createBiquadFilter();
+    hp = audioCtx.createBiquadFilter();
     hp.type = 'highpass';
     hp.frequency.value = 260;
-    const s = audioCtx.createGain();
+    s = audioCtx.createGain();
     s.gain.value = (space - 0.2) * 0.5;
     gain.connect(hp);
     hp.connect(s);
@@ -324,6 +353,7 @@ function playBass(time, step, params) {
     s.connect(reverbSend);
   }
 
+  cleanupOnEnded(carrier, [carrier, mod, modGain, sub, filt, gain, hp, s]);
   carrier.start(time);
   mod.start(time);
   sub.start(time);
@@ -372,6 +402,8 @@ function playChord(time, step, params) {
   env.connect(sendRev);
   sendRev.connect(reverbSend);
 
+  const nodes = [filt, env, sendDub, sendRev];
+  let lastOsc = null;
   const perVoiceGain = notes.length === 1 ? 0.52 : Math.min(0.32, 1.15 / notes.length);
   notes.forEach((m, idx) => {
     const f = midiToFreq(m) * pf;
@@ -392,11 +424,18 @@ function playChord(time, step, params) {
     oscB.connect(noteGain);
     noteGain.connect(filt);
 
+    nodes.push(oscA, oscB, noteGain);
+    lastOsc = oscA;
+
     oscA.start(time);
     oscB.start(time);
     oscA.stop(time + dur + 0.04);
     oscB.stop(time + dur + 0.04);
   });
+
+  if (lastOsc) {
+    cleanupOnEnded(lastOsc, nodes);
+  }
 }
 
 // 5) DREAMY VOCAL CHOPS (Formant Synth OR Pitched Melodic Audio Sample)
@@ -439,6 +478,7 @@ function playVox(time, step, params) {
     sDub.connect(dubSend);
     sDub.connect(reverbSend);
 
+    cleanupOnEnded(src, [src, filt, gain, sDub]);
     src.start(time);
     src.stop(time + dur + 0.03);
     return;
@@ -492,6 +532,8 @@ function playVox(time, step, params) {
   env.gain.linearRampToValueAtTime(accentScale * 0.52, time + 0.02);
   env.gain.exponentialRampToValueAtTime(0.001, time + dur);
 
+  const nodes = [osc, oscSub, lfo, lfoGain, preLp, air, airGain, env];
+
   for (let f = 0; f < 3; f++) {
     const bp = audioCtx.createBiquadFilter();
     bp.type = 'bandpass';
@@ -505,6 +547,7 @@ function playVox(time, step, params) {
     preLp.connect(bp);
     bp.connect(fg);
     fg.connect(env);
+    nodes.push(bp, fg);
   }
 
   env.connect(duckBus);
@@ -518,7 +561,9 @@ function playVox(time, step, params) {
   vRev.gain.value = space * 0.88;
   env.connect(vRev);
   vRev.connect(reverbSend);
+  nodes.push(vDub, vRev);
 
+  cleanupOnEnded(osc, nodes);
   osc.start(time);
   oscSub.start(time);
   lfo.start(time);
@@ -580,6 +625,7 @@ function playSmpl(time, step, params) {
     sSend.connect(dubSend);
     sSend.connect(reverbSend);
 
+    cleanupOnEnded(src, [src, filt, gain, sSend]);
     src.start(time, startOffset, playDur + 0.02);
     return;
   }
@@ -623,6 +669,7 @@ function playSmpl(time, step, params) {
     src.connect(bp);
     bp.connect(g);
     g.connect(outGain);
+    cleanupOnEnded(src, [src, bp, g, outGain, send]);
     src.start(time, Math.random() * 0.7);
     src.stop(time + dur + 0.02);
     return;
@@ -645,6 +692,7 @@ function playSmpl(time, step, params) {
     src.connect(bp);
     bp.connect(g);
     g.connect(outGain);
+    cleanupOnEnded(src, [src, bp, g, outGain, send]);
     src.start(time, Math.random() * 0.7);
     src.stop(time + dur + 0.03);
     return;
@@ -658,6 +706,7 @@ function playSmpl(time, step, params) {
   const osc2 = audioCtx.createOscillator();
   const filt = audioCtx.createBiquadFilter();
   const g = audioCtx.createGain();
+  let extraGain = null;
 
   if (idx === 0 || idx === 5) {
     // MARIM / WOOD Kalimba: warm woody sine + 4x harmonic ping
@@ -665,11 +714,11 @@ function playSmpl(time, step, params) {
     osc1.frequency.setValueAtTime(f, time);
     osc2.type = 'triangle';
     osc2.frequency.setValueAtTime(f * (idx === 0 ? 4 : 2.98), time);
-    const o2g = audioCtx.createGain();
-    o2g.gain.setValueAtTime(0.28, time);
-    o2g.gain.exponentialRampToValueAtTime(0.001, time + 0.045);
-    osc2.connect(o2g);
-    o2g.connect(filt);
+    extraGain = audioCtx.createGain();
+    extraGain.gain.setValueAtTime(0.28, time);
+    extraGain.gain.exponentialRampToValueAtTime(0.001, time + 0.045);
+    osc2.connect(extraGain);
+    extraGain.connect(filt);
   } else if (idx === 1) {
     // PLUCK: Nylon guitar pluck
     osc1.type = 'triangle';
@@ -684,11 +733,11 @@ function playSmpl(time, step, params) {
     osc1.frequency.setValueAtTime(f, time);
     osc2.type = 'sine';
     osc2.frequency.setValueAtTime(f * (idx === 2 ? 2.5 : 3.01), time);
-    const fmG = audioCtx.createGain();
-    fmG.gain.setValueAtTime(f * (0.4 + tone * 1.1), time);
-    fmG.gain.exponentialRampToValueAtTime(1, time + dur * 0.5);
-    osc2.connect(fmG);
-    fmG.connect(osc1.frequency);
+    extraGain = audioCtx.createGain();
+    extraGain.gain.setValueAtTime(f * (0.4 + tone * 1.1), time);
+    extraGain.gain.exponentialRampToValueAtTime(1, time + dur * 0.5);
+    osc2.connect(extraGain);
+    extraGain.connect(osc1.frequency);
   } else {
     // STAB: Warm muted analog brass stab
     osc1.type = 'sawtooth';
@@ -712,6 +761,7 @@ function playSmpl(time, step, params) {
   filt.connect(g);
   g.connect(outGain);
 
+  cleanupOnEnded(osc1, [osc1, osc2, extraGain, filt, g, outGain, send]);
   osc1.start(time);
   osc2.start(time);
   osc1.stop(time + dur + 0.04);

@@ -24,12 +24,32 @@ let reverbNode = null;
 let vinylGain = null;
 let vinylSource = null;
 let noiseBuffer = null;
+let lastTapeSatDrive = -1;
 
+// Track last-scheduled targets per AudioParam to avoid redundant automation events
+const paramTargets = new WeakMap();
+
+function setParamSmooth(param, value, time, timeConstant, eps = 1e-4) {
+  if (!param) return;
+  const prev = paramTargets.get(param);
+  if (prev !== undefined && Math.abs(prev - value) <= eps) return;
+  paramTargets.set(param, value);
+
+  if (typeof param.cancelAndHoldAtTime === 'function') {
+    param.cancelAndHoldAtTime(time);
+  } else {
+    param.cancelScheduledValues(time);
+    param.setValueAtTime(param.value, time);
+  }
+  param.setTargetAtTime(value, time, timeConstant);
+}
+
+// Odd curve length (2049) ensures exact 0.0 -> 0.0 mapping with zero DC offset
 function makeSoftClipCurve(amount = 6) {
-  const n = 2048;
+  const n = 2049;
   const curve = new Float32Array(n);
   for (let i = 0; i < n; i++) {
-    const x = (i * 2) / n - 1;
+    const x = (i * 2) / (n - 1) - 1;
     curve[i] = Math.tanh(x * (1 + amount * 0.08));
   }
   return curve;
@@ -37,12 +57,11 @@ function makeSoftClipCurve(amount = 6) {
 
 // Extreme-capable asymmetrical analog overdrive / fuzz curve (0 = clean, 1 = filthy crunch)
 function makeOverdriveCurve(driveNorm = 0) {
-  const n = 2048;
-  const curve = new Float32Array(n);
   if (driveNorm <= 0.01) {
-    for (let i = 0; i < n; i++) curve[i] = (i * 2) / n - 1;
-    return curve;
+    return null;
   }
+  const n = 2049;
+  const curve = new Float32Array(n);
   const k = 1 + Math.pow(driveNorm, 1.55) * 44;
   const asym = driveNorm * 0.16;
   const biasOffset = Math.tanh(asym);
@@ -50,7 +69,7 @@ function makeOverdriveCurve(driveNorm = 0) {
   const hardMix = Math.max(0, (driveNorm - 0.55) / 0.45);
 
   for (let i = 0; i < n; i++) {
-    const x = (i * 2) / n - 1;
+    const x = (i * 2) / (n - 1) - 1;
     const soft = (Math.tanh(x * k + asym) - biasOffset) * norm;
     const hard = Math.max(-0.82, Math.min(0.82, x * (1 + k * 0.45))) / 0.82;
     curve[i] = soft * (1 - hardMix * 0.45) + hard * (hardMix * 0.45);
@@ -187,7 +206,7 @@ export function initAudio() {
     const input = audioCtx.createGain();
     const preGain = audioCtx.createGain();
     const shaper = audioCtx.createWaveShaper();
-    shaper.oversample = '4x';
+    shaper.oversample = 'none';
 
     // Warm post-distortion tone filter so extreme crunch stays thick, never harsh fizz
     const postLp = audioCtx.createBiquadFilter();
@@ -256,8 +275,11 @@ export function updateTrackDrive(chId) {
   const d = Math.max(0, Math.min(1, state.trackParams[chId]?.drive ?? 0.2));
   const strip = trackStrips[chId];
 
-  // Dramatic analog overdrive (clean -> warm console -> gritty MPC -> filthy squash!)
-  strip.shaper.curve = makeOverdriveCurve(d);
+  // Dramatic analog overdrive (bypass shaper completely when clean; 2x oversample when driven)
+  const curve = makeOverdriveCurve(d);
+  strip.shaper.curve = curve;
+  strip.shaper.oversample = curve ? '2x' : 'none';
+
   const pre = 1.0 + Math.pow(d, 1.45) * 9.5;
   const postCut = 18000 - Math.pow(d, 0.85) * 13200; // warms extreme grit down to ~4.8kHz
   const threshold = -4 - d * 40;                      // -4dB (open) -> -44dB (brickwall squash)
@@ -265,12 +287,12 @@ export function updateTrackDrive(chId) {
   const knee = 12 - d * 10;                           // softer -> hard punchy knee
   const makeup = 1.0 + d * 0.55 - Math.pow(d, 1.8) * 0.58; // keep perceived loudness punchy & safe
 
-  strip.preGain.gain.setTargetAtTime(pre, now, 0.02);
-  strip.postLp.frequency.setTargetAtTime(Math.max(3800, postCut), now, 0.025);
-  strip.comp.threshold.setTargetAtTime(threshold, now, 0.02);
-  strip.comp.ratio.setTargetAtTime(ratio, now, 0.02);
-  strip.comp.knee.setTargetAtTime(Math.max(0, knee), now, 0.02);
-  strip.makeup.gain.setTargetAtTime(Math.max(0.65, makeup), now, 0.02);
+  setParamSmooth(strip.preGain.gain, pre, now, 0.02, 1e-3);
+  setParamSmooth(strip.postLp.frequency, Math.max(3800, postCut), now, 0.025, 1.0);
+  setParamSmooth(strip.comp.threshold, threshold, now, 0.02, 1e-2);
+  setParamSmooth(strip.comp.ratio, ratio, now, 0.02, 1e-2);
+  setParamSmooth(strip.comp.knee, Math.max(0, knee), now, 0.02, 1e-2);
+  setParamSmooth(strip.makeup.gain, Math.max(0.65, makeup), now, 0.02, 1e-3);
 }
 
 export function updateAllTrackDrives() {
@@ -285,9 +307,9 @@ export function updateTrackMix(chId) {
   const pan = Math.max(-1, Math.min(1, p.pan ?? 0));
   const strip = trackStrips[chId];
   // Musical exponential volume taper so low levels feel smooth and granular
-  strip.volGain.gain.setTargetAtTime(vol * vol * 1.32, now, 0.02);
+  setParamSmooth(strip.volGain.gain, vol * vol * 1.32, now, 0.02, 1e-3);
   if (strip.panner) {
-    strip.panner.pan.setTargetAtTime(pan, now, 0.02);
+    setParamSmooth(strip.panner.pan, pan, now, 0.02, 1e-3);
   }
 }
 
@@ -311,7 +333,7 @@ export function getAudioNodes() {
 export function updateVinylAudio() {
   if (!audioCtx || !vinylGain) return;
   const lvl = Math.max(0, Math.min(1, (state.vinylLevel ?? 32) / 100));
-  vinylGain.gain.setTargetAtTime(state.vinylOn ? lvl * 0.48 : 0.0, audioCtx.currentTime, 0.05);
+  setParamSmooth(vinylGain.gain, state.vinylOn ? lvl * 0.48 : 0.0, audioCtx.currentTime, 0.05, 1e-3);
 }
 
 export function updateFxAudioParams() {
@@ -319,34 +341,38 @@ export function updateFxAudioParams() {
   const now = audioCtx.currentTime;
 
   const baseDelay = (60 / state.bpm) * 0.75;
-  dubDelayNode.delayTime.setTargetAtTime(state.fx.TAPE ? baseDelay * 1.32 : baseDelay, now, 0.045);
+  setParamSmooth(dubDelayNode.delayTime, state.fx.TAPE ? baseDelay * 1.32 : baseDelay, now, 0.045, 1e-4);
 
-  dubFeedback.gain.setTargetAtTime(state.fx.DUB ? 0.86 : 0.44, now, 0.035);
-  dubSend.gain.setTargetAtTime(state.fx.DUB ? 0.96 : 0.36, now, 0.035);
+  setParamSmooth(dubFeedback.gain, state.fx.DUB ? 0.86 : 0.44, now, 0.035, 1e-3);
+  setParamSmooth(dubSend.gain, state.fx.DUB ? 0.96 : 0.36, now, 0.035, 1e-3);
 
   if (state.fx.LPF) {
-    masterFilter.frequency.setTargetAtTime(380, now, 0.035);
-    masterFilter.Q.setTargetAtTime(3.0, now, 0.035);
+    setParamSmooth(masterFilter.frequency, 380, now, 0.035, 1.0);
+    setParamSmooth(masterFilter.Q, 3.0, now, 0.035, 1e-2);
   } else if (state.fx.TAPE) {
-    masterFilter.frequency.setTargetAtTime(1450, now, 0.05);
-    masterFilter.Q.setTargetAtTime(1.3, now, 0.05);
+    setParamSmooth(masterFilter.frequency, 1450, now, 0.05, 1.0);
+    setParamSmooth(masterFilter.Q, 1.3, now, 0.05, 1e-2);
   } else {
-    masterFilter.frequency.setTargetAtTime(17500, now, 0.04);
-    masterFilter.Q.setTargetAtTime(0.75, now, 0.04);
+    setParamSmooth(masterFilter.frequency, 17500, now, 0.04, 1.0);
+    setParamSmooth(masterFilter.Q, 0.75, now, 0.04, 1e-2);
   }
 
   const compNorm = Math.max(0, Math.min(1, (state.comp ?? 42) / 100));
-  tapeSat.curve = state.fx.TAPE
-    ? makeOverdriveCurve(0.68)
-    : makeOverdriveCurve(compNorm * 0.58);
+  const satDrive = state.fx.TAPE ? 0.68 : compNorm * 0.58;
+  if (Math.abs(satDrive - lastTapeSatDrive) > 0.005) {
+    const curve = makeOverdriveCurve(satDrive);
+    tapeSat.curve = curve;
+    tapeSat.oversample = curve ? '2x' : 'none';
+    lastTapeSatDrive = satDrive;
+  }
 
   // Master bus glue compressor (compresses EVERYTHING including Kick & Perc!)
   const masterLvl = Math.max(0, Math.min(1, (state.masterVol ?? 88) / 100));
-  masterComp.threshold.setTargetAtTime(-6 - compNorm * 34, now, 0.03);
-  masterComp.ratio.setTargetAtTime(1.8 + Math.pow(compNorm, 1.2) * 14.2, now, 0.03);
-  masterComp.knee.setTargetAtTime(14 - compNorm * 11, now, 0.03);
-  masterComp.release.setTargetAtTime(0.18 - compNorm * 0.1, now, 0.03);
-  masterGain.gain.setTargetAtTime((0.88 + compNorm * 0.56) * masterLvl * masterLvl * 1.15, now, 0.03);
+  setParamSmooth(masterComp.threshold, -6 - compNorm * 34, now, 0.03, 1e-2);
+  setParamSmooth(masterComp.ratio, 1.8 + Math.pow(compNorm, 1.2) * 14.2, now, 0.03, 1e-2);
+  setParamSmooth(masterComp.knee, 14 - compNorm * 11, now, 0.03, 1e-2);
+  setParamSmooth(masterComp.release, 0.18 - compNorm * 0.1, now, 0.03, 1e-3);
+  setParamSmooth(masterGain.gain, (0.88 + compNorm * 0.56) * masterLvl * masterLvl * 1.15, now, 0.03, 1e-3);
 }
 
 export function triggerSidechain(time, intensity = 0.85) {
@@ -354,10 +380,15 @@ export function triggerSidechain(time, intensity = 0.85) {
   const pumpNorm = state.pump / 100;
   if (pumpNorm < 0.02) return;
   const duckDepth = Math.max(0.14, 1.0 - intensity * pumpNorm * 0.82);
-  sidechainGain.gain.cancelScheduledValues(time);
-  sidechainGain.gain.setValueAtTime(1.0, time);
-  sidechainGain.gain.linearRampToValueAtTime(duckDepth, time + 0.012);
-  sidechainGain.gain.exponentialRampToValueAtTime(1.0, time + 0.16 + pumpNorm * 0.12);
+  const g = sidechainGain.gain;
+  if (typeof g.cancelAndHoldAtTime === 'function') {
+    g.cancelAndHoldAtTime(time);
+  } else {
+    g.cancelScheduledValues(time);
+    g.setValueAtTime(Math.max(duckDepth, g.value), time);
+  }
+  g.linearRampToValueAtTime(duckDepth, time + 0.012);
+  g.exponentialRampToValueAtTime(1.0, time + 0.16 + pumpNorm * 0.12);
 }
 
 // Normalize a mono AudioBuffer cleanly

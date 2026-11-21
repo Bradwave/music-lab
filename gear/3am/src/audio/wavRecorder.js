@@ -3,10 +3,80 @@
 import { state, showStatus, notify } from '../state/store.js';
 import { initAudio, getAudioNodes } from './engine.js';
 
-let wavProcessor = null;
+let recorderNode = null;
+let muteTap = null;
+let workletLoadedCtx = null;
 let leftChunks = [];
 let rightChunks = [];
 let totalSamples = 0;
+
+const WORKLET_CODE = `
+class StereoWavCaptureProcessor extends AudioWorkletProcessor {
+  constructor() {
+    super();
+    this.bufSize = 2048;
+    this.bufL = new Float32Array(this.bufSize);
+    this.bufR = new Float32Array(this.bufSize);
+    this.offset = 0;
+    this.active = true;
+    this.port.onmessage = (e) => {
+      if (e.data === 'stop') {
+        if (this.offset > 0) {
+          const l = this.bufL.slice(0, this.offset);
+          const r = this.bufR.slice(0, this.offset);
+          this.port.postMessage({ l, r }, [l.buffer, r.buffer]);
+          this.offset = 0;
+        }
+        this.active = false;
+      }
+    };
+  }
+  process(inputs) {
+    if (!this.active) return false;
+    const input = inputs[0];
+    if (!input || !input.length) return true;
+    const chL = input[0];
+    const chR = input[1] || chL;
+    if (!chL) return true;
+    let i = 0;
+    while (i < chL.length) {
+      const copy = Math.min(this.bufSize - this.offset, chL.length - i);
+      this.bufL.set(chL.subarray(i, i + copy), this.offset);
+      this.bufR.set(chR.subarray(i, i + copy), this.offset);
+      this.offset += copy;
+      i += copy;
+      if (this.offset >= this.bufSize) {
+        const l = this.bufL;
+        const r = this.bufR;
+        this.port.postMessage({ l, r }, [l.buffer, r.buffer]);
+        this.bufL = new Float32Array(this.bufSize);
+        this.bufR = new Float32Array(this.bufSize);
+        this.offset = 0;
+      }
+    }
+    return true;
+  }
+}
+registerProcessor('stereo-wav-capture', StereoWavCaptureProcessor);
+`;
+
+async function ensureWorkletLoaded(audioCtx) {
+  if (!audioCtx.audioWorklet) return false;
+  if (workletLoadedCtx === audioCtx) return true;
+  try {
+    const blob = new Blob([WORKLET_CODE], { type: 'application/javascript' });
+    const url = URL.createObjectURL(blob);
+    try {
+      await audioCtx.audioWorklet.addModule(url);
+      workletLoadedCtx = audioCtx;
+      return true;
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  } catch {
+    return false;
+  }
+}
 
 function encodeStereoWav(lChunks, rChunks, totalLen, sampleRate) {
   const buffer = new ArrayBuffer(44 + totalLen * 4);
@@ -46,45 +116,83 @@ function encodeStereoWav(lChunks, rChunks, totalLen, sampleRate) {
   return new Blob([buffer], { type: 'audio/wav' });
 }
 
-export function toggleWavRecording() {
+let isStarting = false;
+
+export async function toggleWavRecording() {
   initAudio();
   const { audioCtx, masterGain } = getAudioNodes();
 
   if (!state.isWavRecording) {
+    if (isStarting) return;
+    isStarting = true;
     leftChunks = [];
     rightChunks = [];
     totalSamples = 0;
 
-    wavProcessor = audioCtx.createScriptProcessor(4096, 2, 2);
-    wavProcessor.onaudioprocess = (e) => {
-      if (!state.isWavRecording) return;
-      leftChunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
-      rightChunks.push(new Float32Array(e.inputBuffer.getChannelData(1)));
-      totalSamples += e.inputBuffer.length;
-    };
+    try {
+      const useWorklet = await ensureWorkletLoaded(audioCtx);
+      muteTap = audioCtx.createGain();
+      muteTap.gain.value = 0;
 
-    const muteTap = audioCtx.createGain();
-    muteTap.gain.value = 0;
-    masterGain.connect(wavProcessor);
-    wavProcessor.connect(muteTap);
-    muteTap.connect(audioCtx.destination);
-    wavProcessor._muteTap = muteTap;
+      if (useWorklet) {
+        const workletNode = new AudioWorkletNode(audioCtx, 'stereo-wav-capture', {
+          numberOfInputs: 1,
+          numberOfOutputs: 1,
+          channelCount: 2,
+          channelCountMode: 'explicit'
+        });
+        workletNode.port.onmessage = (e) => {
+          const { l, r } = e.data || {};
+          if (!l || !r) return;
+          leftChunks.push(l);
+          rightChunks.push(r);
+          totalSamples += l.length;
+        };
+        recorderNode = workletNode;
+      } else {
+        const scriptNode = audioCtx.createScriptProcessor(4096, 2, 2);
+        scriptNode.onaudioprocess = (e) => {
+          if (!state.isWavRecording) return;
+          leftChunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+          rightChunks.push(new Float32Array(e.inputBuffer.getChannelData(1)));
+          totalSamples += e.inputBuffer.length;
+        };
+        recorderNode = scriptNode;
+      }
 
-    state.isWavRecording = true;
-    showStatus('REC .WAV LIVE...', 4000);
-    notify('wav');
+      masterGain.connect(recorderNode);
+      recorderNode.connect(muteTap);
+      muteTap.connect(audioCtx.destination);
+
+      state.isWavRecording = true;
+      showStatus('REC .WAV LIVE...', 4000);
+      notify('wav');
+    } finally {
+      isStarting = false;
+    }
   } else {
     state.isWavRecording = false;
-    if (wavProcessor) {
-      masterGain.disconnect(wavProcessor);
-      wavProcessor.disconnect();
-      if (wavProcessor._muteTap) wavProcessor._muteTap.disconnect();
-      wavProcessor = null;
+    if (recorderNode) {
+      if (recorderNode.port) {
+        recorderNode.port.postMessage('stop');
+      }
+      try { masterGain.disconnect(recorderNode); } catch {}
+      try { recorderNode.disconnect(); } catch {}
+      if (recorderNode.onaudioprocess) recorderNode.onaudioprocess = null;
+      recorderNode = null;
+    }
+    if (muteTap) {
+      try { muteTap.disconnect(); } catch {}
+      muteTap = null;
     }
     notify('wav');
 
     if (totalSamples > 0) {
       const blob = encodeStereoWav(leftChunks, rightChunks, totalSamples, audioCtx.sampleRate);
+      leftChunks = [];
+      rightChunks = [];
+      totalSamples = 0;
+
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

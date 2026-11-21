@@ -10,9 +10,11 @@ let lastScheduledStepTime = 0;
 let lastScheduledStepIdx = 0;
 let onPlayheadCallback = null;
 let isFirstBar = true;
+let playSessionId = 0;
 
 const LOOKAHEAD_MS = 24;
 const SCHEDULE_AHEAD_SEC = 0.11;
+const MAX_CATCHUP_SEC = 0.25;
 
 export function setPlayheadListener(fn) {
   onPlayheadCallback = fn;
@@ -67,9 +69,10 @@ function scheduleStep(stepIndex, time) {
     }
   });
 
+  const session = playSessionId;
   const delayMs = Math.max(0, (time - audioCtx.currentTime) * 1000);
   setTimeout(() => {
-    if (!state.isPlaying) return;
+    if (!state.isPlaying || session !== playSessionId) return;
     state.currentStep = effectiveStep;
     state.animFrame++;
     if (onPlayheadCallback) onPlayheadCallback(effectiveStep);
@@ -91,10 +94,19 @@ function advanceStep() {
 
 function schedulerTick() {
   const { audioCtx } = getAudioNodes();
-  if (!audioCtx) return;
-  while (nextStepTime < audioCtx.currentTime + SCHEDULE_AHEAD_SEC) {
+  if (!audioCtx || !state.isPlaying) return;
+
+  const now = audioCtx.currentTime;
+  // Resync cleanly after background-tab throttling or lag instead of firing a burst of notes
+  if (nextStepTime < now - MAX_CATCHUP_SEC) {
+    nextStepTime = now + 0.02;
+  }
+
+  let scheduled = 0;
+  while (nextStepTime < now + SCHEDULE_AHEAD_SEC && scheduled < 4) {
     scheduleStep(scheduleStepIndex, nextStepTime);
     advanceStep();
+    scheduled++;
   }
 }
 
@@ -103,6 +115,7 @@ export function startPlayback() {
   updateFxAudioParams();
   if (state.isPlaying) return;
 
+  playSessionId++;
   state.isPlaying = true;
   isFirstBar = true;
   if (state.chainEnabled && state.songChain.length > 0) {
@@ -118,6 +131,7 @@ export function startPlayback() {
 }
 
 export function stopPlayback() {
+  playSessionId++;
   state.isPlaying = false;
   if (schedulerTimer) {
     clearInterval(schedulerTimer);

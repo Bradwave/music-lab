@@ -16,6 +16,22 @@ function driftFactor(amount = 0.03) {
   return (1 + (Math.random() * 2 - 1) * amount * (0.2 + state.drift * 0.8)) * tapePitch();
 }
 
+// Disconnect all per-voice nodes from persistent buses once the voice's source ends
+function cleanupOnEnded(source, nodes) {
+  source.onended = () => {
+    source.onended = null;
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i];
+      if (!node) continue;
+      try {
+        node.disconnect();
+      } catch {
+        // Ignore already-disconnected nodes
+      }
+    }
+  };
+}
+
 // ============================================================================
 // 1) SUB — Analog 909/808 House Kick + Rolling Deep-House Sub-Bass
 // ============================================================================
@@ -46,6 +62,16 @@ export function playSub(time, val, opts = {}) {
 
     osc.connect(gain);
     gain.connect(dest);
+
+    let revTap = null;
+    if (depth > 0.45 && !isSoft) {
+      revTap = audioCtx.createGain();
+      revTap.gain.value = (depth - 0.45) * 0.14 * t.reverbScale;
+      gain.connect(revTap);
+      revTap.connect(reverbSend);
+    }
+
+    cleanupOnEnded(osc, [osc, gain, revTap]);
     osc.start(time);
     osc.stop(time + dur + 0.02);
 
@@ -60,6 +86,7 @@ export function playSub(time, val, opts = {}) {
       clickGain.gain.exponentialRampToValueAtTime(0.001, time + 0.019);
       clickOsc.connect(clickGain);
       clickGain.connect(dest);
+      cleanupOnEnded(clickOsc, [clickOsc, clickGain]);
       clickOsc.start(time);
       clickOsc.stop(time + 0.022);
 
@@ -69,13 +96,6 @@ export function playSub(time, val, opts = {}) {
       setTimeout(() => {
         state.kickPulse = Math.max(state.kickPulse, vel);
       }, delayMs);
-    }
-
-    if (depth > 0.45 && !isSoft) {
-      const revTap = audioCtx.createGain();
-      revTap.gain.value = (depth - 0.45) * 0.14 * t.reverbScale;
-      gain.connect(revTap);
-      revTap.connect(reverbSend);
     }
     return;
   }
@@ -114,6 +134,7 @@ export function playSub(time, val, opts = {}) {
   filt.connect(gain);
   gain.connect(dest);
 
+  cleanupOnEnded(subOsc, [subOsc, bodyOsc, bodyMix, filt, gain]);
   subOsc.start(time);
   bodyOsc.start(time);
   subOsc.stop(time + dur + 0.02);
@@ -148,6 +169,7 @@ export function playCut(time, val, opts = {}) {
     g.gain.exponentialRampToValueAtTime(0.001, time + 0.014);
     osc.connect(g);
     g.connect(panner);
+    cleanupOnEnded(osc, [osc, g, panner]);
     osc.start(time);
     osc.stop(time + 0.018);
     return;
@@ -169,6 +191,7 @@ export function playCut(time, val, opts = {}) {
     osc.connect(bp);
     bp.connect(g);
     g.connect(panner);
+    cleanupOnEnded(osc, [osc, bp, g, panner]);
     osc.start(time);
     osc.stop(time + 0.042);
 
@@ -185,6 +208,7 @@ export function playCut(time, val, opts = {}) {
     src.connect(hp);
     hp.connect(ng);
     ng.connect(panner);
+    cleanupOnEnded(src, [src, hp, ng]);
     src.start(time, Math.random() * 0.8);
     src.stop(time + 0.016);
     return;
@@ -208,6 +232,7 @@ export function playCut(time, val, opts = {}) {
       src.connect(bp);
       bp.connect(g);
       g.connect(panner);
+      cleanupOnEnded(src, idx === 2 ? [src, bp, g, panner] : [src, bp, g]);
       src.start(time + off, Math.random() * 0.8);
       src.stop(time + off + d + 0.01);
     });
@@ -226,6 +251,7 @@ export function playCut(time, val, opts = {}) {
     g.gain.exponentialRampToValueAtTime(0.001, time + 0.045);
     osc.connect(g);
     g.connect(panner);
+    cleanupOnEnded(osc, [osc, g, panner]);
     osc.start(time);
     osc.stop(time + 0.05);
     return;
@@ -243,6 +269,7 @@ export function playCut(time, val, opts = {}) {
     g.gain.exponentialRampToValueAtTime(0.001, time + 0.12);
     osc.connect(g);
     g.connect(panner);
+    cleanupOnEnded(osc, [osc, g, panner]);
     osc.start(time);
     osc.stop(time + 0.13);
     return;
@@ -261,6 +288,7 @@ export function playCut(time, val, opts = {}) {
     src.connect(hp);
     hp.connect(g);
     g.connect(panner);
+    cleanupOnEnded(src, [src, hp, g, panner]);
     src.start(time, Math.random() * 0.9);
     src.stop(time + 0.01);
     return;
@@ -293,6 +321,7 @@ export function playCut(time, val, opts = {}) {
     g.connect(revTap);
     revTap.connect(reverbSend);
 
+    cleanupOnEnded(carrier, [carrier, mod, modGain, g, revTap, panner]);
     carrier.start(time);
     mod.start(time);
     carrier.stop(time + 0.075);
@@ -315,6 +344,7 @@ export function playCut(time, val, opts = {}) {
   src.connect(bp);
   bp.connect(g);
   g.connect(panner);
+  cleanupOnEnded(src, [src, bp, g, panner]);
   src.start(time, Math.random() * 0.8);
   src.stop(time + 0.055);
 }
@@ -358,20 +388,25 @@ export function playChd(time, val, opts = {}) {
   filt.connect(env);
   env.connect(dest);
 
+  const nodes = [chordBus, filt, env];
+
   // Extra reverb & dub send for ghost whispers or high depth
   const revTap = audioCtx.createGain();
   revTap.gain.value = (isGhost ? 0.55 : (0.24 + depth * 0.46)) * t.reverbScale;
   env.connect(revTap);
   revTap.connect(reverbSend);
+  nodes.push(revTap);
 
   if (isGhost || depth > 0.35 || t.dubFbBoost > 0.05) {
     const dubTap = audioCtx.createGain();
     dubTap.gain.value = isGhost ? 0.48 : (depth * 0.36 + Math.max(0, t.dubFbBoost));
     env.connect(dubTap);
     dubTap.connect(dubSend);
+    nodes.push(dubTap);
   }
 
   // Synthesize each note in the parallel chord with hour-sculpted waveform & Rhodes bell tine
+  let lastOsc = null;
   chord.midis.forEach((midi, idx) => {
     const freq = midiToFreq(midi) * tapePitch();
     const detuneCents = (idx - 2) * 3.8 + (Math.random() - 0.5) * 6 * state.drift;
@@ -397,11 +432,18 @@ export function playChd(time, val, opts = {}) {
     tineGain.connect(voiceGain);
     voiceGain.connect(chordBus);
 
+    nodes.push(oscA, oscB, voiceGain, tineGain);
+    lastOsc = oscA;
+
     oscA.start(time);
     oscB.start(time);
     oscA.stop(time + dur + 0.03);
     oscB.stop(time + dur + 0.03);
   });
+
+  if (lastOsc) {
+    cleanupOnEnded(lastOsc, nodes);
+  }
 }
 
 // ============================================================================
@@ -420,10 +462,6 @@ export function playAir(time, val, opts = {}) {
   panner.pan.setValueAtTime(panPos, time);
   panner.connect(dest);
 
-  const src = audioCtx.createBufferSource();
-  src.buffer = noiseBuffer;
-  src.playbackRate.value = pf;
-
   // 0: Tight closed 909 hat | 1: Airy open hat | 2: Crisp shaker | 3: Micro-tick
   // 4: Reverse breath puff | 5: Stereo metallic grain | 6: Dust sparkle | 7: Ride shimmer
   if (type === 5) {
@@ -440,10 +478,15 @@ export function playAir(time, val, opts = {}) {
     osc.connect(bp);
     bp.connect(g);
     g.connect(panner);
+    cleanupOnEnded(osc, [osc, bp, g, panner]);
     osc.start(time);
     osc.stop(time + 0.02);
     return;
   }
+
+  const src = audioCtx.createBufferSource();
+  src.buffer = noiseBuffer;
+  src.playbackRate.value = pf;
 
   const hp = audioCtx.createBiquadFilter();
   hp.type = type === 2 || type === 4 ? 'bandpass' : 'highpass';
@@ -464,13 +507,15 @@ export function playAir(time, val, opts = {}) {
   hp.connect(g);
   g.connect(panner);
 
+  let revTap = null;
   if ((type === 1 || type === 4 || type === 7) && state.depth > 0.25) {
-    const revTap = audioCtx.createGain();
+    revTap = audioCtx.createGain();
     revTap.gain.value = 0.22 + state.depth * 0.3;
     g.connect(revTap);
     revTap.connect(reverbSend);
   }
 
+  cleanupOnEnded(src, [src, hp, g, revTap, panner]);
   src.start(time, Math.random() * 0.85);
   src.stop(time + dur + 0.02);
 }

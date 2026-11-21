@@ -4,15 +4,24 @@
 
 import { state, refreshGhostMaps, setAnchor, showStatus, notify } from '../state/store.js';
 import { LANES, getValueLabel } from '../state/scales.js';
-import { initAudio, getAudioNodes, updateAudioParams, triggerSliceGate, resetMasterGate } from './engine.js';
+import {
+  initAudio,
+  getAudioNodes,
+  updateAudioParams,
+  updateDriftFilters,
+  triggerSliceGate,
+  resetMasterGate
+} from './engine.js';
 import { triggerLaneVoice, auditionLane } from './synths.js';
 
 let timerId = null;
 let nextNoteTime = 0;
 let stepDurationSec = 0.125;
+let playSessionId = 0;
 
 const LOOKAHEAD_MS = 24;
 const SCHEDULE_AHEAD_SEC = 0.11;
+const MAX_CATCHUP_SEC = 0.25;
 
 function scheduleTick(tick, time) {
   const { audioCtx } = getAudioNodes();
@@ -26,15 +35,19 @@ function scheduleTick(tick, time) {
   const isOffSixteenth = tick % 2 === 1;
   const swingSec = isOffSixteenth ? stepDurationSec * (state.drift * 0.44) : 0;
 
-  // Gentle 16-bar filter breathing phase
-  const phaseMod = (tick / 256) * Math.PI * 2;
-  updateAudioParams(phaseMod);
+  // Gentle 16-bar filter breathing (updated quarterly only when DRIFT > 0)
+  if (tick % 4 === 0 && state.drift > 0.01) {
+    const phaseMod = (tick / 256) * Math.PI * 2;
+    updateDriftFilters(phaseMod, time);
+  }
 
   // Every 8 bars (128 ticks), if DRIFT > 0.42, slowly evolve subtle ghost sparks
   if (tick > 0 && tick % 128 === 0 && state.drift > 0.42) {
     state.driftCycle = (state.driftCycle + 1) % 64;
     refreshGhostMaps();
   }
+
+  const uiUpdates = [];
 
   for (const laneDef of LANES) {
     const id = laneDef.id;
@@ -75,31 +88,45 @@ function scheduleTick(tick, time) {
       }
     }
 
-    // Sync visual playhead & flash spark to actual audio playback moment
-    const delayMs = Math.max(0, (time + swingSec - audioCtx.currentTime) * 1000);
-    setTimeout(() => {
-      if (!state.isPlaying) return;
-      state.laneStep[id] = stepIdx;
-      if (firedType) {
-        state.laneFlash[id] = firedType === 'anchor' ? 1.0 : 0.72;
-        state.laneFlashType[id] = firedType;
-        if (firedGhostSlot >= 0) {
-          state.laneLastGhostHit[id] = firedGhostSlot;
+    uiUpdates.push({ id, stepIdx, firedType, firedGhostSlot });
+  }
+
+  // Sync visual playhead & flash sparks for all 4 lanes with a single timer per tick
+  const session = playSessionId;
+  const delayMs = Math.max(0, (time + swingSec - audioCtx.currentTime) * 1000);
+  setTimeout(() => {
+    if (!state.isPlaying || session !== playSessionId) return;
+    for (let i = 0; i < uiUpdates.length; i++) {
+      const u = uiUpdates[i];
+      state.laneStep[u.id] = u.stepIdx;
+      if (u.firedType) {
+        state.laneFlash[u.id] = u.firedType === 'anchor' ? 1.0 : 0.72;
+        state.laneFlashType[u.id] = u.firedType;
+        if (u.firedGhostSlot >= 0) {
+          state.laneLastGhostHit[u.id] = u.firedGhostSlot;
         }
       }
-    }, delayMs);
-  }
+    }
+  }, delayMs);
 }
 
 function schedulerLoop() {
   const { audioCtx } = getAudioNodes();
   if (!audioCtx || !state.isPlaying) return;
 
-  while (nextNoteTime < audioCtx.currentTime + SCHEDULE_AHEAD_SEC) {
+  const now = audioCtx.currentTime;
+  // Resync cleanly after background-tab throttling or lag instead of firing a burst of notes
+  if (nextNoteTime < now - MAX_CATCHUP_SEC) {
+    nextNoteTime = now + 0.02;
+  }
+
+  let scheduled = 0;
+  while (nextNoteTime < now + SCHEDULE_AHEAD_SEC && scheduled < 4) {
     scheduleTick(state.globalTick, nextNoteTime);
     stepDurationSec = (60 / state.bpm / 4) * (state.fx.FLUT ? 1.18 : 1.0);
     nextNoteTime += stepDurationSec;
     state.globalTick++;
+    scheduled++;
   }
 }
 
@@ -107,6 +134,7 @@ export function startPlayback() {
   const ctx = initAudio();
   if (state.isPlaying) return;
 
+  playSessionId++;
   state.isPlaying = true;
   state.globalTick = 0;
   for (const l of LANES) {
@@ -122,6 +150,7 @@ export function startPlayback() {
 
 export function stopPlayback() {
   if (!state.isPlaying) return;
+  playSessionId++;
   state.isPlaying = false;
   if (timerId) {
     clearInterval(timerId);
