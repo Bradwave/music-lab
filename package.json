@@ -1,0 +1,20 @@
+{
+  "name": "music-lab",
+  "version": "1.0.0",
+  "description": "Music Lab — Minimal pixel-art Web Audio instruments, grooveboxes & tape experiments",
+  "type": "module",
+  "scripts": {
+    "dev": "node server.mjs",
+    "start": "node server.mjs"
+  },
+  "keywords": [
+    "pwa",
+    "web-audio",
+    "synthesizer",
+    "groovebox",
+    "microhouse",
+    "deep-house",
+    "music-lab"
+  ],
+  "license": "MIT"
+}

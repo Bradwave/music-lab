@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#181512" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Music Lab" />
+  <meta name="description" content="Music Lab — Minimal pixel-art Web Audio instruments, grooveboxes, and tape experiments." />
+  <title>MUSIC LAB // Pocket Rack</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" type="image/svg+xml" href="./icons/icon.svg" />
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+  <link rel="stylesheet" href="./styles/main.css?v=1" />
+</head>
+<body>
+  <main class="rack" aria-label="Music Lab Rack">
+    <header class="rack-header">
+      <div class="brand">
+        <span class="screw" aria-hidden="true"></span>
+        <h1 class="brand-title">MUSIC LAB</h1>
+      </div>
+      <div class="rack-status">
+        <span class="led-dot" aria-hidden="true"></span>
+        <span>2 UNITS</span>
+      </div>
+    </header>
+
+    <section class="rack-slots" aria-label="Instruments">
+      <a class="gear-card theme-sol" href="./gear/sol-16/">
+        <img class="gear-icon" src="./gear/sol-16/icons/icon.svg" alt="SOL-16 icon" width="52" height="52" />
+        <div class="gear-info">
+          <div class="gear-top">
+            <span class="gear-name">SOL-16</span>
+            <span class="gear-slot-id">SLOT 01</span>
+          </div>
+          <p class="gear-sub">Minimal pixel house groovebox with 4×4 sequencer, keybed &amp; FX.</p>
+          <div class="gear-tags">
+            <span class="tag">GROOVEBOX</span>
+            <span class="tag">PIANO</span>
+            <span class="tag">MIDI/WAV</span>
+          </div>
+        </div>
+        <span class="gear-arrow" aria-hidden="true">›</span>
+      </a>
+
+      <a class="gear-card theme-3am" href="./gear/3am/">
+        <img class="gear-icon" src="./gear/3am/icons/icon.svg" alt="3AM icon" width="52" height="52" />
+        <div class="gear-info">
+          <div class="gear-top">
+            <span class="gear-name">3AM</span>
+            <span class="gear-slot-id">SLOT 02</span>
+          </div>
+          <p class="gear-sub">Berlin 3 AM 4-track magnetic tape loom with Night-Arc mood &amp; dub FX.</p>
+          <div class="gear-tags">
+            <span class="tag">TAPE LOOM</span>
+            <span class="tag amber">NIGHT-ARC</span>
+            <span class="tag">WAV</span>
+          </div>
+        </div>
+        <span class="gear-arrow" aria-hidden="true">›</span>
+      </a>
+
+      <div class="empty-slot" aria-hidden="true">
+        <span>SLOT 03 // READY FOR NEXT EXPERIMENT</span>
+        <span>gear/*</span>
+      </div>
+    </section>
+
+    <footer class="rack-footer">
+      <span id="pwaStatus">WEB AUDIO · OFFLINE READY</span>
+      <button id="btnRefresh" class="px-btn" type="button" title="Clear cached launcher files and reload">REFRESH</button>
+    </footer>
+  </main>
+
+  <script type="module">
+    const statusEl = document.getElementById('pwaStatus');
+    const refreshBtn = document.getElementById('btnRefresh');
+
+    if ('serviceWorker' in navigator) {
+      let reloading = false;
+      const hadController = Boolean(navigator.serviceWorker.controller);
+
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!hadController || reloading) return;
+        reloading = true;
+        window.location.reload();
+      });
+
+      window.addEventListener('load', () => {
+        navigator.serviceWorker
+          .register('./sw.js', { updateViaCache: 'none' })
+          .then((reg) => {
+            reg.update().catch(() => {});
+            document.addEventListener('visibilitychange', () => {
+              if (document.visibilityState === 'visible') {
+                reg.update().catch(() => {});
+              }
+            });
+          })
+          .catch(() => {});
+      });
+    }
+
+    refreshBtn?.addEventListener('click', async () => {
+      if (statusEl) statusEl.textContent = 'CLEARING CACHE...';
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((r) => r.unregister()));
+      }
+      window.location.reload();
+    });
+  </script>
+</body>
+</html>

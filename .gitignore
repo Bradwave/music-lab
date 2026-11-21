@@ -1,0 +1,9 @@
+.DS_Store
+node_modules/
+*.log
+*.wav
+*.aif
+*.aiff
+*.flac
+*.mp3
+*.stems

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges">
+  <!-- Matte outer rack frame -->
+  <rect width="16" height="16" fill="#100e0c"/>
+  <rect x="1" y="1" width="14" height="14" fill="#1c1917"/>
+  <!-- Corner rack screws -->
+  <rect x="2" y="2" width="1" height="1" fill="#463f39"/>
+  <rect x="13" y="2" width="1" height="1" fill="#463f39"/>
+  <rect x="2" y="13" width="1" height="1" fill="#463f39"/>
+  <rect x="13" y="13" width="1" height="1" fill="#463f39"/>
+  <!-- Top rack module (SOL-16 warm amber/orange) -->
+  <rect x="3" y="3" width="10" height="4" fill="#27221e"/>
+  <rect x="4" y="4" width="5" height="2" fill="#f0dbb8"/>
+  <rect x="5" y="4" width="1" height="2" fill="#1e1813"/>
+  <rect x="7" y="5" width="1" height="1" fill="#1e1813"/>
+  <rect x="10" y="4" width="2" height="2" fill="#ff6b2b"/>
+  <!-- Divider seam -->
+  <rect x="3" y="8" width="10" height="1" fill="#100e0c"/>
+  <!-- Bottom rack module (3AM dark slate mint/amber) -->
+  <rect x="3" y="9" width="10" height="4" fill="#182224"/>
+  <rect x="4" y="10" width="2" height="2" fill="#4ee6a8"/>
+  <rect x="7" y="10" width="2" height="2" fill="#f2a649"/>
+  <rect x="10" y="10" width="2" height="2" fill="#4ee6a8"/>
+</svg>
