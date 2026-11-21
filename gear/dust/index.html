@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a1416" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="DUST" />
+  <meta name="description" content="DUST — Minimal pixel-art vinyl platter for Detroit jazz-wax & Jelinek deep/microhouse." />
+  <title>DUST // Vinyl Platter</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" type="image/svg+xml" href="./icons/icon.svg" />
+  <link rel="stylesheet" href="./styles/main.css?v=3" />
+</head>
+<body>
+  <main class="chassis" id="chassis">
+    <!-- MINIMAL HARDWARE TOP BEZEL -->
+    <header class="top-bar">
+      <div class="brand">
+        <span class="screw" aria-hidden="true"></span>
+        <span class="brand-name">DUST</span>
+        <span class="brand-rpm" id="rpmTag">33⅓</span>
+      </div>
+
+      <div class="readout-pill" id="readoutPill" aria-live="polite">
+        <span class="led" id="ledSpin" aria-hidden="true"></span>
+        <span id="readoutText">DROP NEEDLE · TAP WAX</span>
+      </div>
+
+      <div class="top-actions">
+        <button id="btnGuide" class="px-btn icon-btn" type="button" title="Gestures & Guide" aria-label="Gestures and Guide">?</button>
+        <button id="btnMenu" class="px-btn icon-btn" type="button" title="Record Sleeve & Menu" aria-label="Menu">≡</button>
+      </div>
+    </header>
+
+    <!-- PURE SPINNING VINYL PLATTER WELL (NO SLIDERS, NO GRID, NO BUTTONS) -->
+    <section class="platter-bezel" aria-label="Interactive Spinning Vinyl Platter">
+      <canvas id="platterCanvas" width="280" height="280"></canvas>
+    </section>
+
+    <!-- INTEGRATED HARDWARE FOOTER BAR (ZONE + KEY + CARBON BRUSH) -->
+    <footer class="plate-footer">
+      <span class="plate-zone" id="plateZone">OUTER · DETROIT WAX</span>
+      <div class="plate-controls">
+        <button id="btnQuickKey" class="px-btn micro-btn" type="button" title="Cycle Key Signature (K)">KEY F</button>
+        <button id="btnQuickBrush" class="px-btn micro-btn" type="button" title="Brush Wax Clean (C)">BRUSH · 5</button>
+      </div>
+    </footer>
+  </main>
+
+  <!-- RECORD SLEEVE MENU MODAL -->
+  <div id="menuBackdrop" class="overlay-backdrop hidden">
+    <aside class="modal" role="dialog" aria-label="DUST Record Sleeve Menu">
+      <div class="modal-header">
+        <span class="modal-title">DUST // RECORD SLEEVE</span>
+        <button id="btnCloseMenu" class="px-btn icon-btn" type="button" aria-label="Close">×</button>
+      </div>
+
+      <div class="modal-group">
+        <span class="modal-label">PRESSING SIDE</span>
+        <div class="modal-row">
+          <button id="btnSideA" class="px-btn modal-btn" type="button">SIDE A · DETROIT</button>
+          <button id="btnSideB" class="px-btn modal-btn" type="button">SIDE B · JELINEK</button>
+        </div>
+      </div>
+
+      <div class="modal-group">
+        <span class="modal-label">KEY SIGNATURE</span>
+        <div class="modal-row key-row" id="keyRow">
+          <button class="px-btn modal-btn key-btn" data-key="f" type="button">F</button>
+          <button class="px-btn modal-btn key-btn" data-key="eb" type="button">Eb</button>
+          <button class="px-btn modal-btn key-btn" data-key="g" type="button">G</button>
+          <button class="px-btn modal-btn key-btn" data-key="bb" type="button">Bb</button>
+        </div>
+      </div>
+
+      <div class="modal-group">
+        <span class="modal-label">MOTOR TEMPO &amp; GROOVE</span>
+        <div class="modal-row bpm-row">
+          <button id="btnBpmDown" class="px-btn modal-btn" type="button">−2</button>
+          <span class="bpm-readout" id="bpmReadout">122 BPM</span>
+          <button id="btnBpmUp" class="px-btn modal-btn" type="button">+2</button>
+        </div>
+        <button id="btnAutoDrift" class="px-btn modal-btn" type="button">GROOVE: LOCKED LOOP</button>
+      </div>
+
+      <div class="modal-group">
+        <span class="modal-label">WAX CARE</span>
+        <div class="modal-row">
+          <button id="btnCleanWax" class="px-btn modal-btn" type="button">BRUSH CLEAN</button>
+          <button id="btnRestoreSide" class="px-btn modal-btn subtle-danger" type="button">RESET SIDE</button>
+        </div>
+      </div>
+
+      <div class="modal-group">
+        <span class="modal-label">AUDIO CAPTURE</span>
+        <button id="btnWav" class="px-btn modal-btn" type="button">REC MASTER .WAV</button>
+      </div>
+
+      <div class="modal-group">
+        <span class="modal-label">MUSIC LAB</span>
+        <a href="../../" class="px-btn modal-btn">← BACK TO MUSIC LAB</a>
+      </div>
+    </aside>
+  </div>
+
+  <!-- QUICK GESTURE GUIDE MODAL -->
+  <div id="guideBackdrop" class="overlay-backdrop hidden">
+    <aside class="modal" role="dialog" aria-label="How to Play DUST">
+      <div class="modal-header">
+        <span class="modal-title">HOW TO PLAY DUST</span>
+        <button id="btnCloseGuide" class="px-btn icon-btn" type="button" aria-label="Close">×</button>
+      </div>
+
+      <ol class="guide-list">
+        <li>
+          <span class="badge crimson">1</span>
+          <div><strong>MOVE THE NEEDLE (OUTER ↔ INNER).</strong> Drag the tonearm radially. Outer wax is lush Detroit jazz-house (vibraphone, Wurlitzer, upright bass); inner wax strips down into hypnotic Jelinek micro-loops. Tap the <strong>spindle</strong> or dock the arm to stop/start.</div>
+        </li>
+        <li>
+          <span class="badge gold">2</span>
+          <div><strong>TAP &amp; SMUDGE THE WAX.</strong> Tap anywhere on the vinyl for a crisp <strong>dust speck</strong> (modal ping, brushed tick, or skipping-needle repeat). <strong>Hold or smear</strong> for a warm granular smudge cloud. Double-tap a mark to flick it off. The glowing <strong>focus band</strong> follows your needle.</div>
+        </li>
+        <li>
+          <span class="badge gold">3</span>
+          <div><strong>RIDE THE STROBE RIM / LABEL.</strong> Drag the outer metal strobe rim or center white label to <strong>pitch-bend</strong> timing, hold to <strong>brake</strong> the motor, or <strong>back-spin</strong> to scrub a fresh groove variation. Double-tap the white label to flip Side A/B.</div>
+        </li>
+      </ol>
+
+      <div class="key-strip">
+        <span>SPACE: NEEDLE</span>
+        <span>←/→: GROOVE</span>
+        <span>K: KEY</span>
+        <span>F: FLIP SIDE</span>
+        <span>S: SCRUB</span>
+        <span>C: BRUSH</span>
+      </div>
+
+      <button id="btnGuideStart" class="px-btn active-gold modal-btn" type="button">DROP THE NEEDLE</button>
+    </aside>
+  </div>
+
+  <script type="module" src="./src/main.js?v=3"></script>
+</body>
+</html>

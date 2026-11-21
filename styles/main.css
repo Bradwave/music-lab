@@ -44,6 +44,12 @@
   --am-amber: #f2a649;
   --am-soft: #163029;
 
+  --dust-bg: #1a1416;
+  --dust-border: #3a2d31;
+  --dust-accent: #e6b85c;
+  --dust-crimson: #d94f5c;
+  --dust-soft: #332714;
+
   --font-px: 'Silkscreen', ui-monospace, 'SF Mono', Menlo, Monaco, 'Courier New', monospace;
 }
 
@@ -185,6 +191,17 @@ body {
   outline: none;
 }
 
+.gear-card.theme-dust {
+  background: var(--dust-bg);
+  border-color: var(--dust-border);
+}
+
+.gear-card.theme-dust:hover,
+.gear-card.theme-dust:focus-visible {
+  border-color: var(--dust-accent);
+  outline: none;
+}
+
 .gear-icon {
   width: 52px;
   height: 52px;
@@ -221,6 +238,10 @@ body {
 
 .theme-3am .gear-name {
   color: #d7e6dd;
+}
+
+.theme-dust .gear-name {
+  color: #ede3cf;
 }
 
 .gear-slot-id {
@@ -265,6 +286,16 @@ body {
   background: #302415;
 }
 
+.theme-dust .tag {
+  color: var(--dust-accent);
+  background: var(--dust-soft);
+}
+
+.theme-dust .tag.crimson {
+  color: #ff8590;
+  background: #38181c;
+}
+
 .gear-arrow {
   font-size: 14px;
   color: var(--dim);
@@ -277,6 +308,10 @@ body {
 
 .theme-3am:hover .gear-arrow {
   color: var(--am-accent);
+}
+
+.theme-dust:hover .gear-arrow {
+  color: var(--dust-accent);
 }
 
 .empty-slot {
