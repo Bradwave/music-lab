@@ -6,7 +6,7 @@ import {
   generateRandomConstellation,
   getPreset
 } from '../state/presets.js';
-import { SCALES } from '../state/scales.js';
+import { SCALES, getScale } from '../state/scales.js';
 import {
   state,
   FLUX_MODES,
@@ -58,6 +58,7 @@ export function initControls(canvas) {
   const btnPlay = document.getElementById('btnPlay');
   const toolBtns = Array.from(document.querySelectorAll('.tool-btn'));
   const btnFlux = document.getElementById('btnFlux');
+  const btnScale = document.getElementById('btnScale');
   const btnHyper = document.getElementById('btnHyper');
   const btnMutate = document.getElementById('btnMutate');
   const btnPatch = document.getElementById('btnPatch');
@@ -151,9 +152,13 @@ export function initControls(canvas) {
     btnFlux.classList.remove('flux-glass', 'flux-acid', 'flux-glitch', 'flux-void');
     btnFlux.classList.add(`flux-${state.flux}`);
 
+    // Scale / Key Signature Button
+    const curScale = getScale(state.scaleId);
+    btnScale.textContent = curScale.short;
+
     // Hyper Button
     btnHyper.classList.toggle('active-magenta', state.isHyper);
-    btnHyper.textContent = state.isHyper ? '2× HYPER' : 'HYPER';
+    btnHyper.textContent = state.isHyper ? '2× HYP' : 'HYPER';
 
     // Patch Button
     const curPreset = getPreset(state.presetIndex);
@@ -209,6 +214,14 @@ export function initControls(canvas) {
     notify('flux');
   }
 
+  function cycleScale() {
+    const idx = (SCALES.findIndex((s) => s.id === state.scaleId) + 1) % SCALES.length;
+    state.scaleId = SCALES[idx].id;
+    saveState();
+    showStatus(`SCALE: ${SCALES[idx].name}`);
+    notify('scale');
+  }
+
   function cycleWallMode() {
     const idx = (WALL_MODES.indexOf(state.wallMode) + 1) % WALL_MODES.length;
     state.wallMode = WALL_MODES[idx];
@@ -259,6 +272,7 @@ export function initControls(canvas) {
   });
 
   btnFlux.addEventListener('click', cycleFlux);
+  btnScale.addEventListener('click', cycleScale);
   wallTag.addEventListener('click', cycleWallMode);
   btnMutate.addEventListener('click', mutateCircuit);
   btnPatch.addEventListener('click', nextPreset);
@@ -604,11 +618,7 @@ export function initControls(canvas) {
     } else if (e.key === 'w' || e.key === 'W') {
       cycleWallMode();
     } else if (e.key === 'k' || e.key === 'K') {
-      const idx = (SCALES.findIndex((s) => s.id === state.scaleId) + 1) % SCALES.length;
-      state.scaleId = SCALES[idx].id;
-      saveState();
-      showStatus(`SCALE: ${SCALES[idx].name}`);
-      notify('scale');
+      cycleScale();
     } else if (e.key === 'c' || e.key === 'C') {
       state.optics = [];
       state.customPatch = true;

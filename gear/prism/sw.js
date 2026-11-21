@@ -1,14 +1,14 @@
-const CACHE_NAME = 'prism-pwa-v1';
+const CACHE_NAME = 'prism-pwa-v2';
 
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.webmanifest',
-  './styles/main.css?v=1',
+  './styles/main.css?v=2',
   './fonts/silkscreen-400.woff2',
   './fonts/silkscreen-700.woff2',
   './icons/icon.svg',
-  './src/main.js?v=1',
+  './src/main.js?v=2',
   './src/state/scales.js',
   './src/state/presets.js',
   './src/state/store.js',
