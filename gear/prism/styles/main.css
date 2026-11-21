@@ -1,0 +1,616 @@
+/* ============================================================================
+   PRISM // PIXEL-ART LASER OPTICAL BENCH & WEST-COAST FM SYNTH
+   Midnight cobalt/obsidian anodized chassis, electric cyan laser optics,
+   hyper magenta prisms, acid lime coils, ultraviolet warp portals.
+   ============================================================================ */
+
+@font-face {
+  font-family: 'Silkscreen';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fonts/silkscreen-400.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Silkscreen';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../fonts/silkscreen-700.woff2') format('woff2');
+}
+
+:root {
+  --bg-desk: #07090f;
+  --desk-dot: #151c2e;
+
+  --case-bg: #101522;
+  --case-panel: #161d2f;
+  --case-border: #283554;
+  --case-hi: #212c46;
+  --case-shadow: #05070c;
+
+  --cyan: #38f2ff;
+  --cyan-bright: #b4fbff;
+  --cyan-deep: #156d7c;
+  --cyan-soft: #102a36;
+
+  --magenta: #ff3d9a;
+  --magenta-bright: #ffa1cf;
+  --magenta-deep: #851d52;
+  --magenta-soft: #351127;
+
+  --lime: #c8ff4d;
+  --lime-bright: #e7ffad;
+  --lime-deep: #5a7b1c;
+  --lime-soft: #212e11;
+
+  --violet: #b46eff;
+  --violet-bright: #e1c4ff;
+  --violet-deep: #572e88;
+  --violet-soft: #241538;
+
+  --ice: #e8f4ff;
+  --muted: #7f91b3;
+  --dim: #495775;
+
+  --font-px: 'Silkscreen', ui-monospace, 'SF Mono', Menlo, Monaco, monospace;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.hidden {
+  display: none !important;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  min-height: 100dvh;
+  background-color: var(--bg-desk);
+  background-image: radial-gradient(var(--desk-dot) 1px, transparent 1px);
+  background-size: 16px 16px;
+  color: var(--ice);
+  font-family: var(--font-px);
+  -webkit-font-smoothing: none;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(8px, env(safe-area-inset-top)) 8px max(10px, env(safe-area-inset-bottom)) 8px;
+}
+
+/* Main Optical Bench Chassis */
+.chassis {
+  position: relative;
+  width: min(100%, 480px);
+  max-height: calc(100dvh - 18px);
+  background: var(--case-bg);
+  border: 2px solid var(--case-border);
+  box-shadow:
+    0 6px 0 var(--case-shadow),
+    6px 6px 0 var(--case-shadow),
+    inset 2px 2px 0 var(--case-hi),
+    inset -2px -2px 0 #090c15;
+  padding: 10px 10px 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chassis.hyper-active {
+  border-color: var(--magenta);
+  box-shadow:
+    0 6px 0 var(--case-shadow),
+    6px 6px 0 var(--case-shadow),
+    0 0 18px rgba(255, 61, 154, 0.25),
+    inset 2px 2px 0 #3f1c37;
+}
+
+/* Top Hardware Bezel */
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+  min-height: 28px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.screw {
+  width: 8px;
+  height: 8px;
+  background: #2c3959;
+  border: 1px solid #090d16;
+  box-shadow: inset 1px 1px 0 #4d6291;
+  flex-shrink: 0;
+}
+
+.brand-name {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--ice);
+}
+
+.brand-tag {
+  font-size: 8px;
+  color: var(--cyan);
+  background: var(--cyan-soft);
+  border: 1px solid var(--cyan-deep);
+  padding: 2px 4px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.brand-tag:hover {
+  border-color: var(--cyan);
+  color: var(--cyan-bright);
+}
+
+.readout-pill {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #090c14;
+  border: 2px solid #202c47;
+  box-shadow: inset 2px 2px 0 #04060b;
+  padding: 4px 7px;
+  font-size: 9px;
+  color: var(--ice);
+  letter-spacing: 0.04em;
+  overflow: hidden;
+}
+
+.readout-pill span:last-child {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.led {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  background: #20314a;
+  border: 1px solid #060910;
+}
+
+.led.on {
+  background: var(--cyan);
+  box-shadow: 0 0 6px rgba(56, 242, 255, 0.85);
+}
+
+.led.hyper {
+  background: var(--magenta);
+  box-shadow: 0 0 8px rgba(255, 61, 154, 0.95);
+}
+
+.led.rec {
+  background: var(--lime);
+  box-shadow: 0 0 7px rgba(200, 255, 77, 0.9);
+}
+
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+/* Tactile Pixel Buttons */
+.px-btn {
+  font-family: var(--font-px);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  background: #171f33;
+  color: var(--ice);
+  border: 2px solid #2b3a5c;
+  box-shadow: 0 3px 0 var(--case-shadow), inset 1px 1px 0 #24314f;
+  padding: 6px 7px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  text-decoration: none;
+  line-height: 1;
+  transition: border-color 0.06s ease, background-color 0.06s ease;
+}
+
+.px-btn:hover {
+  border-color: var(--cyan);
+}
+
+.px-btn:active,
+.px-btn.pressed {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--case-shadow);
+}
+
+.icon-btn {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  font-size: 12px;
+}
+
+.px-btn.active-cyan {
+  background: var(--cyan-soft);
+  border-color: var(--cyan);
+  color: var(--cyan-bright);
+  box-shadow: 0 3px 0 var(--case-shadow), inset 1px 1px 0 #1b4f62;
+}
+
+.px-btn.active-magenta {
+  background: var(--magenta-soft);
+  border-color: var(--magenta);
+  color: var(--magenta-bright);
+  box-shadow: 0 3px 0 var(--case-shadow), inset 1px 1px 0 #662049;
+}
+
+.px-btn.active-lime {
+  background: var(--lime-soft);
+  border-color: var(--lime);
+  color: var(--lime-bright);
+  box-shadow: 0 3px 0 var(--case-shadow), inset 1px 1px 0 #446118;
+}
+
+.px-btn.active-violet {
+  background: var(--violet-soft);
+  border-color: var(--violet);
+  color: var(--violet-bright);
+  box-shadow: 0 3px 0 var(--case-shadow), inset 1px 1px 0 #4a2a75;
+}
+
+.px-btn.subtle-danger {
+  color: var(--magenta-bright);
+  border-color: #54223d;
+}
+
+/* Square CRT Optical Chamber */
+.chamber-bezel {
+  position: relative;
+  width: min(100%, calc(100dvh - 156px));
+  aspect-ratio: 1 / 1;
+  height: auto;
+  flex-shrink: 0;
+  margin: 0 auto;
+  background: #070a12;
+  border: 2px solid #222f4d;
+  box-shadow:
+    inset 3px 3px 0 #04060b,
+    inset -2px -2px 0 #182238;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#chamberCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+/* Compact Tactile Control Deck */
+.control-deck {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.deck-row {
+  display: grid;
+  gap: 5px;
+}
+
+.tool-row {
+  grid-template-columns: 1.35fr 1fr 1fr 1fr 1fr;
+}
+
+.perf-row {
+  grid-template-columns: 1fr 1fr 1fr 1.25fr;
+}
+
+.play-btn {
+  min-height: 30px;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 5px 6px;
+}
+
+.tool-btn {
+  min-height: 30px;
+  padding: 5px 4px;
+  font-size: 8px;
+}
+
+.tool-btn .glyph {
+  font-size: 11px;
+  line-height: 1;
+}
+
+.tool-btn[data-tool="mirror"] .glyph { color: var(--cyan); }
+.tool-btn[data-tool="split"] .glyph { color: var(--magenta); }
+.tool-btn[data-tool="bass"] .glyph { color: var(--lime); }
+.tool-btn[data-tool="warp"] .glyph { color: var(--violet); }
+
+.perf-btn {
+  min-height: 27px;
+  padding: 4px 5px;
+  font-size: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Flux color coding */
+.perf-btn.flux-glass {
+  color: var(--cyan-bright);
+  border-color: var(--cyan-deep);
+  background: #102430;
+}
+
+.perf-btn.flux-acid {
+  color: var(--lime-bright);
+  border-color: var(--lime-deep);
+  background: #1f2b12;
+}
+
+.perf-btn.flux-glitch {
+  color: var(--magenta-bright);
+  border-color: var(--magenta-deep);
+  background: #301225;
+}
+
+.perf-btn.flux-void {
+  color: var(--violet-bright);
+  border-color: var(--violet-deep);
+  background: #201435;
+}
+
+.hyper-btn {
+  color: var(--magenta-bright);
+  border-color: #542240;
+  background: #201224;
+  touch-action: none;
+}
+
+.hyper-btn.active-magenta {
+  background: #4e1438;
+  border-color: var(--magenta);
+  color: #ffffff;
+  box-shadow: 0 1px 0 var(--case-shadow), 0 0 10px rgba(255, 61, 154, 0.55);
+  transform: translateY(2px);
+}
+
+/* Modal Overlays */
+.overlay-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(5, 7, 13, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+}
+
+.modal {
+  width: 100%;
+  max-width: 396px;
+  max-height: calc(100dvh - 28px);
+  overflow-y: auto;
+  background: var(--case-bg);
+  border: 2px solid var(--case-border);
+  box-shadow:
+    0 6px 0 var(--case-shadow),
+    6px 6px 0 var(--case-shadow),
+    inset 2px 2px 0 var(--case-hi);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #1e2942;
+}
+
+.modal-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--cyan-bright);
+}
+
+.modal-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.modal-label {
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.modal-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.preset-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.modal-btn {
+  flex: 1;
+  min-height: 30px;
+  font-size: 8.5px;
+  padding: 6px 6px;
+}
+
+.bpm-readout {
+  min-width: 88px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--ice);
+  background: #090c14;
+  border: 2px solid #222f4d;
+  padding: 6px 6px;
+}
+
+/* Guide List */
+.guide-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.guide-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 9px;
+  line-height: 1.5;
+  color: var(--ice);
+}
+
+.guide-list strong {
+  color: var(--cyan-bright);
+}
+
+.badge {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  border: 2px solid currentColor;
+}
+
+.badge.cyan {
+  color: var(--cyan-bright);
+  background: var(--cyan-soft);
+}
+
+.badge.magenta {
+  color: var(--magenta-bright);
+  background: var(--magenta-soft);
+}
+
+.badge.lime {
+  color: var(--lime-bright);
+  background: var(--lime-soft);
+}
+
+.key-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding-top: 4px;
+}
+
+.key-strip span {
+  font-size: 8px;
+  color: var(--muted);
+  background: #0a0e18;
+  border: 1px solid #222f4d;
+  padding: 3px 5px;
+}
+
+/* Compact Mobile Portrait */
+@media (max-width: 420px) {
+  .chassis {
+    padding: 8px 8px 8px;
+    gap: 6px;
+  }
+
+  .brand-tag {
+    display: none;
+  }
+
+  .readout-pill {
+    padding: 4px 5px;
+    font-size: 8px;
+    gap: 5px;
+  }
+
+  .tool-btn .lbl {
+    font-size: 7.5px;
+  }
+
+  .perf-btn {
+    font-size: 7.5px;
+    padding: 4px 3px;
+  }
+}
+
+/* Landscape Short Viewport Fit */
+@media (orientation: landscape) and (max-height: 560px) {
+  body {
+    padding: 6px 10px;
+  }
+
+  .chassis {
+    width: auto;
+    min-width: min(360px, 92vw);
+    max-width: 96vw;
+    padding: 7px 9px;
+    gap: 5px;
+  }
+
+  .chamber-bezel {
+    width: min(calc(100dvh - 134px), 78vw);
+    height: auto;
+    aspect-ratio: 1 / 1;
+  }
+
+  .play-btn,
+  .tool-btn {
+    min-height: 25px;
+  }
+
+  .perf-btn {
+    min-height: 23px;
+  }
+}

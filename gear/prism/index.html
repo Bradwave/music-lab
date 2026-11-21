@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#111624" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="PRISM" />
+  <meta name="description" content="PRISM — Minimal pixel-art laser optical bench & West-Coast Buchla FM synthesizer." />
+  <title>PRISM // Laser Optical Synth</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" type="image/svg+xml" href="./icons/icon.svg" />
+  <link rel="stylesheet" href="./styles/main.css?v=1" />
+</head>
+<body>
+  <main class="chassis" id="chassis">
+    <!-- TOP HARDWARE BEZEL -->
+    <header class="top-bar">
+      <div class="brand">
+        <span class="screw" aria-hidden="true"></span>
+        <span class="brand-name">PRISM</span>
+        <span class="brand-tag" id="wallTag">BOUNCE</span>
+      </div>
+
+      <div class="readout-pill" id="readoutPill" aria-live="polite">
+        <span class="led" id="ledBeam" aria-hidden="true"></span>
+        <span id="readoutText">TAP PLAY OR GRID</span>
+      </div>
+
+      <div class="top-actions">
+        <button id="btnGuide" class="px-btn icon-btn" type="button" title="How to Play (?)" aria-label="How to Play">?</button>
+        <button id="btnMenu" class="px-btn icon-btn" type="button" title="Optics Rack Menu" aria-label="Menu">≡</button>
+      </div>
+    </header>
+
+    <!-- SQUARE CRT OPTICAL CHAMBER -->
+    <section class="chamber-bezel" aria-label="Interactive Laser Optical Bench">
+      <canvas id="chamberCanvas" width="276" height="276"></canvas>
+    </section>
+
+    <!-- COMPACT TACTILE CONTROL STRIP -->
+    <section class="control-deck" aria-label="Optical Tools and Performance">
+      <!-- Row 1: Transport + 4 Optical Pieces -->
+      <div class="deck-row tool-row">
+        <button id="btnPlay" class="px-btn play-btn" type="button" title="Play / Stop (Space)">▶ PLAY</button>
+        <button class="px-btn tool-btn active-cyan" data-tool="mirror" type="button" title="Mirror (1): Reflects 90° · Buchla FM">
+          <span class="glyph">/</span><span class="lbl">MIR</span>
+        </button>
+        <button class="px-btn tool-btn" data-tool="split" type="button" title="Prism Split (2): Splits beam · Shimmer Bell">
+          <span class="glyph">◇</span><span class="lbl">SPL</span>
+        </button>
+        <button class="px-btn tool-btn" data-tool="bass" type="button" title="Bass Coil (3): Wavefold Sub · Lens/Bounce">
+          <span class="glyph">◆</span><span class="lbl">BAS</span>
+        </button>
+        <button class="px-btn tool-btn" data-tool="warp" type="button" title="Warp Portal (4): Teleports &amp; Pitch-Bends">
+          <span class="glyph">◎</span><span class="lbl">WRP</span>
+        </button>
+      </div>
+
+      <!-- Row 2: Live Performance Modifiers -->
+      <div class="deck-row perf-row">
+        <button id="btnFlux" class="px-btn perf-btn flux-glass" type="button" title="Cycle Sound Engine Mode (F)">GLASS</button>
+        <button id="btnHyper" class="px-btn perf-btn hyper-btn" type="button" title="Hold for 2× Hyperdrive &amp; Delay Freeze (H)">HYPER</button>
+        <button id="btnMutate" class="px-btn perf-btn" type="button" title="Mutate Optics (M)">MUTATE</button>
+        <button id="btnPatch" class="px-btn perf-btn" type="button" title="Next Constellation Preset (P)">01 ORBIT</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- OPTICS RACK MENU MODAL -->
+  <div id="menuBackdrop" class="overlay-backdrop hidden">
+    <aside class="modal" role="dialog" aria-label="PRISM Optics Menu">
+      <div class="modal-header">
+        <span class="modal-title">PRISM // OPTICS BENCH</span>
+        <button id="btnCloseMenu" class="px-btn icon-btn" type="button" aria-label="Close">×</button>
+      </div>
+
+      <div class="modal-group">
+        <span class="modal-label">CONSTELLATION PRESET</span>
+        <div class="preset-grid" id="presetGrid"></div>
+      </div>
+
+      <div class="modal-group">
+        <span class="modal-label">FLUX ENGINE</span>
+        <div class="modal-row" id="fluxRow">
+          <button class="px-btn modal-btn flux-opt" data-flux="glass" type="button">GLASS</button>
+          <button class="px-btn modal-btn flux-opt" data-flux="acid" type="button">ACID</button>
+          <button class="px-btn modal-btn flux-opt" data-flux="glitch" type="button">GLITCH</button>
+          <button class="px-btn modal-btn flux-opt" data-flux="void" type="button">VOID</button>
+        </div>
+      </div>
+
+      <div class="modal-group">
+        <span class="modal-label">SCALE &amp; KEY</span>
+        <div class="preset-grid" id="scaleGrid"></div>
+      </div>
+
+      <div class="modal-group">
+        <span class="modal-label">CHAMBER WALLS</span>
+        <div class="modal-row" id="wallRow">
+          <button class="px-btn modal-btn wall-opt" data-wall="bounce" type="button">BOUNCE</button>
+          <button class="px-btn modal-btn wall-opt" data-wall="wrap" type="button">WRAP</button>
+          <button class="px-btn modal-btn wall-opt" data-wall="absorb" type="button">ABSORB</button>
+        </div>
+      </div>
+
+      <div class="modal-group">
+        <span class="modal-label">LIGHT SPEED (BPM) &amp; EMITTER PULSE</span>
+        <div class="modal-row bpm-row">
+          <button id="btnBpmDown" class="px-btn modal-btn" type="button">−4</button>
+          <span class="bpm-readout" id="bpmReadout">118 BPM</span>
+          <button id="btnBpmUp" class="px-btn modal-btn" type="button">+4</button>
+        </div>
+        <div class="modal-row" id="rateRow">
+          <button class="px-btn modal-btn rate-opt" data-rate="4" type="button">1/4</button>
+          <button class="px-btn modal-btn rate-opt" data-rate="8" type="button">1/2</button>
+          <button class="px-btn modal-btn rate-opt" data-rate="16" type="button">1 BAR</button>
+          <button class="px-btn modal-btn rate-opt" data-rate="32" type="button">2 BAR</button>
+        </div>
+      </div>
+
+      <div class="modal-group">
+        <span class="modal-label">BENCH ACTIONS</span>
+        <div class="modal-row">
+          <button id="btnRandom" class="px-btn modal-btn" type="button">GEN PATCH</button>
+          <button id="btnClear" class="px-btn modal-btn subtle-danger" type="button">CLEAR BENCH</button>
+        </div>
+      </div>
+
+      <div class="modal-group">
+        <span class="modal-label">AUDIO CAPTURE</span>
+        <button id="btnWav" class="px-btn modal-btn" type="button">REC MASTER .WAV</button>
+      </div>
+
+      <div class="modal-group">
+        <span class="modal-label">MUSIC LAB</span>
+        <a href="../../" class="px-btn modal-btn">← BACK TO MUSIC LAB</a>
+      </div>
+    </aside>
+  </div>
+
+  <!-- QUICK GUIDE MODAL -->
+  <div id="guideBackdrop" class="overlay-backdrop hidden">
+    <aside class="modal" role="dialog" aria-label="How to Play PRISM">
+      <div class="modal-header">
+        <span class="modal-title">HOW TO PLAY PRISM</span>
+        <button id="btnCloseGuide" class="px-btn icon-btn" type="button" aria-label="Close">×</button>
+      </div>
+
+      <ol class="guide-list">
+        <li>
+          <span class="badge cyan">1</span>
+          <div><strong>SCULPT WITH LIGHT.</strong> Tap empty cells to place the selected optic: <strong>/ MIR</strong> (90° Buchla FM pluck), <strong>◇ SPL</strong> (2/3-way prism bell splitter), <strong>◆ BAS</strong> (wavefolded acid sub-bass lens or 180° bounce), or <strong>◎ WRP</strong> (paired quantum teleport portals).</div>
+        </li>
+        <li>
+          <span class="badge magenta">2</span>
+          <div><strong>ROTATE, DRAG &amp; COLLIDE.</strong> <strong>Tap</strong> any piece (or the laser Emitter) to rotate/flip its mode. <strong>Drag</strong> to reposition. <strong>Double-tap</strong> (or right-click / drag off-edge) to remove. When two beams <strong>collide</strong>, they detonate a harmonic Super-Nova chord!</div>
+        </li>
+        <li>
+          <span class="badge lime">3</span>
+          <div><strong>GO CRAZY LIVE.</strong> Cycle <strong>FLUX</strong> (GLASS · ACID · GLITCH · VOID) to transform the synth engine. Hold <strong>HYPER</strong> for instant 2× light-speed &amp; feedback freeze. Hit <strong>MUTATE</strong> to evolve the circuit mid-groove, or open <strong>≡</strong> for toroidal <strong>WRAP</strong> walls &amp; presets.</div>
+        </li>
+      </ol>
+
+      <div class="key-strip">
+        <span>SPACE: PLAY</span>
+        <span>1–4: OPTICS</span>
+        <span>F: FLUX</span>
+        <span>HOLD H: HYPER</span>
+        <span>M: MUTATE</span>
+        <span>P: PRESET</span>
+        <span>W: WALLS</span>
+        <span>K: SCALE</span>
+      </div>
+
+      <button id="btnGuideStart" class="px-btn active-cyan modal-btn" type="button">FIRE THE LASER</button>
+    </aside>
+  </div>
+
+  <script type="module" src="./src/main.js?v=1"></script>
+</body>
+</html>

@@ -69,5 +69,6 @@ server.listen(PORT, HOST, () => {
   console.log(`    • Rack:   http://${HOST}:${PORT}/`);
   console.log(`    • SOL-16: http://${HOST}:${PORT}/gear/sol-16/`);
   console.log(`    • 3AM:    http://${HOST}:${PORT}/gear/3am/`);
-  console.log(`    • DUST:   http://${HOST}:${PORT}/gear/dust/\n`);
+  console.log(`    • DUST:   http://${HOST}:${PORT}/gear/dust/`);
+  console.log(`    • PRISM:  http://${HOST}:${PORT}/gear/prism/\n`);
 });

@@ -50,6 +50,12 @@
   --dust-crimson: #d94f5c;
   --dust-soft: #332714;
 
+  --prism-bg: #101522;
+  --prism-border: #283554;
+  --prism-accent: #38f2ff;
+  --prism-magenta: #ff3d9a;
+  --prism-soft: #102a36;
+
   --font-px: 'Silkscreen', ui-monospace, 'SF Mono', Menlo, Monaco, 'Courier New', monospace;
 }
 
@@ -202,6 +208,17 @@ body {
   outline: none;
 }
 
+.gear-card.theme-prism {
+  background: var(--prism-bg);
+  border-color: var(--prism-border);
+}
+
+.gear-card.theme-prism:hover,
+.gear-card.theme-prism:focus-visible {
+  border-color: var(--prism-accent);
+  outline: none;
+}
+
 .gear-icon {
   width: 52px;
   height: 52px;
@@ -242,6 +259,10 @@ body {
 
 .theme-dust .gear-name {
   color: #ede3cf;
+}
+
+.theme-prism .gear-name {
+  color: #e8f4ff;
 }
 
 .gear-slot-id {
@@ -296,6 +317,16 @@ body {
   background: #38181c;
 }
 
+.theme-prism .tag {
+  color: var(--prism-accent);
+  background: var(--prism-soft);
+}
+
+.theme-prism .tag.magenta {
+  color: #ffa1cf;
+  background: #351127;
+}
+
 .gear-arrow {
   font-size: 14px;
   color: var(--dim);
@@ -312,6 +343,10 @@ body {
 
 .theme-dust:hover .gear-arrow {
   color: var(--dust-accent);
+}
+
+.theme-prism:hover .gear-arrow {
+  color: var(--prism-accent);
 }
 
 .empty-slot {

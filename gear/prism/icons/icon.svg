@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" shape-rendering="crispEdges">
+  <!-- Midnight cobalt chassis -->
+  <rect width="32" height="32" fill="#0b0e17"/>
+  <rect x="2" y="2" width="28" height="28" fill="#121726" stroke="#283452" stroke-width="2"/>
+  <!-- Deep CRT optical chamber -->
+  <rect x="4" y="4" width="24" height="24" fill="#090c14"/>
+  <!-- Subtle optical grid dots -->
+  <rect x="8" y="8" width="1" height="1" fill="#1d2740"/>
+  <rect x="16" y="8" width="1" height="1" fill="#1d2740"/>
+  <rect x="23" y="8" width="1" height="1" fill="#1d2740"/>
+  <rect x="8" y="23" width="1" height="1" fill="#1d2740"/>
+  <rect x="23" y="23" width="1" height="1" fill="#1d2740"/>
+  <!-- Emitter on left -->
+  <rect x="5" y="14" width="3" height="4" fill="#38f2ff"/>
+  <rect x="6" y="15" width="2" height="2" fill="#e8faff"/>
+  <!-- Incoming cyan laser beam -->
+  <rect x="8" y="15" width="6" height="2" fill="#38f2ff"/>
+  <!-- Split vertical magenta & lime laser beams -->
+  <rect x="15" y="7" width="2" height="7" fill="#ff3d9a"/>
+  <rect x="15" y="18" width="2" height="7" fill="#c8ff4d"/>
+  <!-- Rightward refracted cyan/violet beam -->
+  <rect x="18" y="15" width="8" height="2" fill="#b46eff"/>
+  <!-- Central Prism Diamond -->
+  <rect x="15" y="13" width="2" height="6" fill="#ff3d9a"/>
+  <rect x="13" y="15" width="6" height="2" fill="#ff3d9a"/>
+  <rect x="14" y="14" width="4" height="4" fill="#ff8ec8"/>
+  <rect x="15" y="15" width="2" height="2" fill="#ffffff"/>
+  <!-- Top mirror / -->
+  <rect x="14" y="6" width="2" height="2" fill="#38f2ff"/>
+  <rect x="16" y="5" width="2" height="2" fill="#9cf9ff"/>
+  <!-- Bottom lime bass coil -->
+  <rect x="14" y="24" width="4" height="3" fill="#c8ff4d"/>
+  <rect x="15" y="25" width="2" height="1" fill="#090c14"/>
+  <!-- Warp portal spark right -->
+  <rect x="25" y="14" width="2" height="4" fill="#b46eff"/>
+  <rect x="24" y="15" width="1" height="2" fill="#e9d2ff"/>
+</svg>

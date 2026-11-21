@@ -1,10 +1,10 @@
-const CACHE_NAME = 'music-lab-pwa-v2';
+const CACHE_NAME = 'music-lab-pwa-v3';
 
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.webmanifest',
-  './styles/main.css?v=2',
+  './styles/main.css?v=3',
   './shared/fonts/silkscreen-400.woff2',
   './shared/fonts/silkscreen-700.woff2',
   './icons/icon.svg',
@@ -13,7 +13,8 @@ const APP_SHELL = [
   './icons/apple-touch-icon.png',
   './gear/sol-16/icons/icon.svg',
   './gear/3am/icons/icon.svg',
-  './gear/dust/icons/icon.svg'
+  './gear/dust/icons/icon.svg',
+  './gear/prism/icons/icon.svg'
 ];
 
 self.addEventListener('install', (event) => {

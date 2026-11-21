@@ -7,6 +7,7 @@ A personal collection of minimal, pixel-art Web Audio instruments, grooveboxes, 
 - **[SOL-16](./gear/sol-16/)** — Minimal pixel-art deep house & microhouse groovebox (4×4 grid, chromatic keybed, 8 patterns, punch-in FX, MIDI & WAV export).
 - **[3AM](./gear/3am/)** — Berlin 3 AM 4-track magnetic tape loom (polyrhythmic anchor/echo engine, Night-Arc 01:00–07:00 mood shifter, dub throws & master tape FX).
 - **[DUST](./gear/dust/)** — Minimal pixel-art spinning vinyl platter for Detroit jazz-wax & Jelinek micro-loops (12-bit sampled jazz buffers, Karplus-Strong upright bass, Focus Band stylus, 4-stage analog phaser, BBD chorus & WAV export).
+- **[PRISM](./gear/prism/)** — Minimal pixel-art laser optical bench & West-Coast Buchla FM synth (90° mirrors, 2/3-way prism splitters, wavefolded acid bass coils, paired quantum warp portals, Super-Nova beam collisions, 4 Flux engines, 2× Hyperdrive & WAV export).
 
 ## Structure
 
